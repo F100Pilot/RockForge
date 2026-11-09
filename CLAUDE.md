@@ -4459,6 +4459,59 @@ clipboard, an empty and a non-plan paste refused, a pasted answer previewed,
 applied (2 tones, base + 2 changes at bundle times) and undone with one Ctrl+Z,
 no horizontal scroll, no page errors.
 
+### The player's guitar, one tone from words, asking the AI (`guitar_profile.py`, `ai_assistant.py`)
+
+"Avança com o 1, 2 e 3" (2026-11-09, after reading what tonecrafter.pages.dev
+does — features only, none of its code or prompts):
+- **The player's instruments** (`infrastructure/guitar_profile.py`, Definições →
+  **Tons e IA**, `GET/PUT /guitar-profile`, `work_dir/guitar_profile.json` — not
+  settings.json, which the Definições save rewrites whole; saved on change):
+  guitar pickups (humbucker/single/p90/mixed/active), bass pickups
+  (passive/active), output low/medium/high, a name; anything else reads as not
+  said (`clean`). `describe` is the lines every tone request carries (the song's
+  plan `_plan_prompt`, the one-tone request). `fit_tone` adjusts only a CURATED
+  driven preset (`preset_fingerprint` + the gate first): hot (output high or
+  active) takes `HOT_GAIN_CUT` (10 % of the range) off every amp `…_Gain` knob and
+  closes the gate `GATE_STEP_DB` (5 dB); single/p90/mixed close the gate 5 dB and
+  leave the gain; low output (not hot) adds `LOW_GAIN_BOOST` (5 %); every value
+  snapped to the knob's step (`_snap`). `fit_tones` marks each changed tone
+  `fitted: [changes in words]`, applied in `/detected-tones` (lead/rhythm and
+  their candidates) and `/tone-suggestions` (each plan's tones) — never stored
+  over the preset; the viewer shows `fittedBadge` and strips the field
+  (`withoutFitted`) when a tone enters the project. A rule of thumb, said as one.
+- **One tone from a description** (`tone_plan.build_tone_prompt`/`read_tones`,
+  `_read_tone_list` shared with `read_plan`): `GET /tone-prompt?description=&bass=`,
+  `POST /tone-text` (a pasted answer), `POST /tone-ask` (asked of the AI; an
+  answer that is not tones is a 422 carrying `answer`/`model`, so the page shows
+  what it said). Tone builder block `#toneDescBlock` ("Descrever o som", ⓘ
+  `tone-describe`): the tones go in through `addToneToProject` (opens in the editor).
+- **Asking the AI** (`infrastructure/ai_assistant.py`, `routers/assistant.py`):
+  OpenRouter (PKCE sign-in `start_openrouter_login`/`finish_openrouter_login` →
+  `/ai-assistant/openrouter/callback`, a localhost callback; or a pasted key),
+  Gemini (a key, `x-goog-api-key`), Ollama (`clean_ollama_url`: loopback or
+  host.docker.internal only — the setting must not reach other machines).
+  `work_dir/ai_assistant.json`; `public_state` never carries a key; urllib through
+  `_https.ssl_context()` with an opener that follows no redirect; errors mapped to
+  401/402/404/429/502/504 (`AiError`). `list_models` gives prices (OpenRouter's
+  free router `openrouter/free` first, the default model); `aiReadyToAsk` asks
+  before a paid or unpriced OpenRouter model with the estimated cost
+  (chars/3.5 + the expected output). Used by `#tonePlanAsk` ("Importar tons de um
+  texto", `POST /jobs/{id}/tone-plan/ask`) and `#toneDescAsk`. Keys are redacted
+  from every log (`app_logging`: the stored keys, `sk-or-…`, `AIza…`,
+  `x-goog-api-key`). Nothing is contacted until a button is pressed.
+Guarded by `test_guitar_profile.py`, `test_ai_assistant.py` (a fake opener: the
+bodies, the PKCE exchange once, the error mapping, the Ollama rule),
+`test_the_players_guitar_reaches_the_requests_and_fits_the_handed_out_presets`,
+`test_the_ai_is_asked_for_the_songs_tones_and_for_one_tone`,
+`test_the_ai_settings_never_send_a_key_back_and_openrouter_signs_in` and
+`test_the_ai_assistants_keys_never_reach_the_log` (the key in the public state,
+the Ollama rule, the PKCE challenge, gain only for hot/low and the fitting in
+`/detected-tones` mutation-checked); with Playwright (AI endpoints faked, PT 1440
+/ EN 760 px): the profile stored, a key saved and never sent back, models with
+prices, the paid-model confirm, a described tone in the editor, an unreadable
+plan answer left in the box, no page errors. **Never run against OpenRouter,
+Gemini or Ollama from here.**
+
 ### Tone volume: MORE NEGATIVE IS LOUDER
 
 "os tons detetados e aplicados estão a ficar com o som muito baixo, e quase não

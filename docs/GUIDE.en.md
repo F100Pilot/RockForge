@@ -678,6 +678,13 @@ and rebuild**.
   with the tone's character — clean, crunch or distortion, dark or bright — so you can tell
   tones apart in a long list. **It is not the real sound**: RockForge does not simulate amps; a
   tone's true sound is only heard in the game (or in DLC Builder).
+- **Describe the sound**: write in a few words the sound you want ("AC/DC crunch", "the
+  Comfortably Numb solo") and RockForge makes **one tone** with the game's gear. **Ask the AI**
+  asks the assistant you connected in **Settings → Tones and AI**; the button beside it copies
+  the request for you to paste into ChatGPT (or another assistant), then you paste the answer
+  under **Or paste the assistant's answer** → **Read the answer**. The tone goes into the project
+  and opens in the editor; every adaptation made (gear read as the closest one, a knob outside
+  its limits) is listed underneath. **Bass tone** asks for a bass tone.
 
 ### Which tone each track plays
 
@@ -710,6 +717,11 @@ This is what goes into the game, after **Apply and rebuild**.
   until you press **Apply to this track** or **Apply to all tracks**. On each row you can
   replace the suggested tone with one of yours (from the project, the library or your PSARCs);
   picking "(the suggested one)" undoes it.
+- If you described your guitar in **Settings → Tones and AI**, the driven tones the detection
+  and the suggestions propose come **fitted to your guitar** (the mark says what changed): hot
+  or active pickups take some gain off and close the noise gate a little; single coils and P90s
+  close the noise gate; a low-output guitar gets a little more gain. It is a rule of thumb, not a
+  measurement — check by ear.
 
 ### Import tones from a text (ChatGPT or another assistant)
 
@@ -730,6 +742,11 @@ text** card (once the project is built):
    saves them. A track the answer does not mention stays as it was. The same chart stays in
    **Tones of each track**, with the tones of the track on screen (also the ones you mark by
    hand); clicking a part takes the cursor there.
+
+With an assistant connected in **Settings → Tones and AI**, **Ask the AI** does steps 1 and 2
+by itself: it sends the request, puts the answer in the box and shows what will change. Before a
+paid model it says how much the request should cost and asks. If the AI answers something else,
+its answer stays in the box for you to read.
 
 It is the assistant's opinion, not a measurement: check it by ear.
 
@@ -857,6 +874,23 @@ are shared. Lead/Rhythm tracks are picked by name; check them afterwards in each
   **Song AppID** (the DLC whose AppID the `.psarc` files carry — the game only lists the song if you
   own that DLC; by default “Cherub Rock”, 248750; **Read the dlc folder** lists the AppIDs of your
   songs, your own DLC first; it applies to the `.psarc` files built afterwards).
+- **Tones and AI**:
+  - **Your guitar and your bass**: pickups, strength (output) and name. It goes into the tone
+    requests to the AI and fits the driven tones the detection and the suggestions propose.
+    Saved straight away.
+  - **AI assistant**, for **Ask the AI** (in "Import tones from a text" and "Describe the
+    sound"):
+    - **OpenRouter**: many models, some free. **Sign in with OpenRouter** opens their page in
+      the browser; when you come back, the key is stored. You can also paste a key. Under
+      **Model**, "Free" (the default) or a paid one, with its price per million tokens; before
+      each request to a paid model RockForge says how much it should cost and asks.
+    - **Google Gemini**: a key of your own from Google AI Studio (aistudio.google.com/apikey),
+      with a free quota.
+    - **Ollama**: a model on your computer, free and offline (e.g. `ollama pull qwen2.5:14b`).
+      Small models get the values wrong more often.
+  - The AI is yours: costs and limits are between you and the provider. The key stays on this
+    computer, is only sent to that provider and never appears in the technical log. Nothing is
+    asked until you press the button.
 - **Software**: in the `.exe`, the **Extra components** card (what is installed, **Install extra
   components** / **Reinstall**, the install log); then what is installed, what is missing and how
   to get it.

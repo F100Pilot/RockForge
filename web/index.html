@@ -967,6 +967,24 @@ details.pv-warn > summary { cursor:pointer; font-size:.88rem; color:var(--muted)
 .set-option input { margin-top:.25rem; accent-color:var(--accent); }
 .set-option > span { display:flex; flex-direction:column; gap:.25rem; }
 .set-status { display:flex; align-items:center; gap:.8rem; }
+.tone-fitted { display:inline-flex; align-items:center; gap:.2rem; margin-left:.4rem; font-size:.78em; color:var(--ok); white-space:nowrap; }
+.tone-fitted .ic { width:.9em; height:.9em; }
+.tone-desc { margin-top:.75rem; border-top:1px solid var(--line); padding-top:.55rem; display:flex; flex-direction:column; gap:.4rem; }
+.tone-desc textarea { width:100%; box-sizing:border-box; resize:vertical; }
+.tone-desc details[open] { display:flex; flex-direction:column; gap:.35rem; }
+.tone-desc ul { margin:.2rem 0 0; padding-left:1.1rem; }
+.ai-grid { display:grid; grid-template-columns:6rem repeat(3, minmax(0,1fr)); gap:.6rem .9rem; align-items:end; }
+.ai-inst { font-weight:700; color:var(--text); padding-bottom:.7rem; }
+@media (max-width:820px) { .ai-grid { grid-template-columns:1fr; } .ai-inst { padding:.4rem 0 0; } }
+.ai-providers { display:grid; grid-template-columns:repeat(auto-fit, minmax(13rem,1fr)); gap:.6rem; }
+.ai-prov { display:flex; flex-direction:column; gap:.2rem; padding:.7rem .8rem; border:1px solid #33363f; border-radius:10px; cursor:pointer; }
+.ai-prov:has(input:checked) { border-color:var(--accent); background:#1f2129; }
+.ai-prov input { align-self:flex-start; }
+.ai-prov-name { font-weight:700; color:var(--text); }
+.ai-box { display:flex; flex-direction:column; gap:.55rem; }
+.ai-box .pv-row input { flex:1; min-width:0; height:2.6rem; }
+.ai-key-alt summary { cursor:pointer; color:var(--muted); font-size:.88rem; }
+
 button.set-pill { height:2.2rem; padding:0 .9rem; border-radius:999px; border:1px solid #33363f; background:#1f2129; color:var(--text); font-weight:600; font-size:.85rem; }
 button.set-pill:hover { filter:none; border-color:var(--muted); }
 button.set-pill.active { border-color:var(--accent); color:var(--accent); background:#2a211c; }
@@ -1724,10 +1742,12 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <h3 id="tnPlanTitle" class="tn-card-title">Importar tons de um texto</h3>
             <button class="info-btn" data-info="tone-plan">ⓘ</button>
           </div>
-          <p class="tn-hint ts-note">Pede os tons da música ao ChatGPT (ou a outro assistente) e cola aqui a resposta: os tons, com o equipamento e as regulações, e onde entra cada um, passam para o projeto.</p>
+          <p class="tn-hint ts-note">Pede os tons da música ao ChatGPT (ou a outro assistente) e cola aqui a resposta: os tons, com o equipamento e as regulações, e onde entra cada um, passam para o projeto. Com uma IA ligada em Definições → Tons e IA, «Perguntar à IA» faz isto sozinho.</p>
           <div class="tp-steps">
             <div class="tp-step"><span class="tp-num">1</span><span class="tp-step-text">Copia o pedido — já leva a música, as pistas, as secções com os compassos e o equipamento do jogo — e cola-o no assistente.</span>
-              <button type="button" id="tonePlanCopy" class="secondary tn-btn"><svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg>Copiar o pedido</button></div>
+              <button type="button" id="tonePlanCopy" class="secondary tn-btn"><svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg>Copiar o pedido</button>
+              <button type="button" id="tonePlanAsk" class="tn-btn" title="Envia o pedido à IA escolhida em Definições → Tons e IA e lê a resposta, sem copiar e colar"><svg class="ic" aria-hidden="true"><use href="#i-wand"/></svg>Perguntar à IA</button></div>
+            <span id="tonePlanAskInfo" class="tn-hint" aria-live="polite"></span>
             <div class="tp-step"><span class="tp-num">2</span><span class="tp-step-text">Cola aqui a resposta toda (com o bloco JSON).</span></div>
             <textarea id="tonePlanText" class="tp-text" rows="8" spellcheck="false" aria-label="Resposta do assistente" placeholder="Cola aqui a resposta do assistente…"></textarea>
             <div class="tp-step"><span class="tp-num">3</span><span class="tp-step-text">Lê a resposta e vê o que vai mudar antes de aplicar.</span>
@@ -1936,6 +1956,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
   <div class="pv-body">
     <nav class="pv-rail" aria-label="Secções das definições">
       <button type="button" data-settings-tab="geral" class="active"><svg class="ic" aria-hidden="true"><use href="#i-globe"/></svg><span>Geral</span></button>
+      <button type="button" data-settings-tab="ai"><svg class="ic" aria-hidden="true"><use href="#i-guitar"/></svg><span>Tons e IA</span></button>
       <button type="button" data-settings-tab="software"><svg class="ic" aria-hidden="true"><use href="#i-activity"/></svg><span>Software</span><span class="rail-dot" id="sysRailDot" hidden></span></button>
       <button type="button" data-settings-tab="ml"><svg class="ic" aria-hidden="true"><use href="#i-terminal"/></svg><span>Python ML</span></button>
       <button type="button" data-settings-tab="stems"><svg class="ic" aria-hidden="true"><use href="#i-layers"/></svg><span>Stems</span></button>
@@ -2003,6 +2024,84 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <input type="text" id="sAppId" inputmode="numeric" autocomplete="off"></label>
           <div class="about-actions"><button type="button" id="sAppIdScan" class="pv-btn"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg>Ler a pasta dlc</button>
             <span id="sAppIdInfo" class="meta"></span></div>
+        </div>
+      </section>
+
+      <!-- Tons e IA: the player's instruments (guitar_profile.py) and the AI that
+           answers the tone requests (ai_assistant.py). Both are saved as they
+           change, in files of their own — not part of "Guardar". -->
+      <section class="pv-page set-page" data-settings-page="ai" hidden>
+        <div>
+          <h1 class="pv-page-title">Tons e IA</h1>
+          <p class="set-desc">O que tocas, para os tons sugeridos e pedidos à IA serem regulados para o teu instrumento, e que IA responde aos pedidos de tons. Guarda-se logo, sem «Guardar».</p>
+        </div>
+        <div class="pv-card pv-card-lg">
+          <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-guitar"/></svg>A tua guitarra e o teu baixo</div>
+          <div class="ai-grid">
+            <span class="ai-inst">Guitarra</span>
+            <label class="set-field"><span>Captadores</span>
+              <select id="gpGuitarPickups" class="set-select">
+                <option value="">—</option><option value="humbucker">Humbucker</option><option value="single">Single coil</option><option value="p90">P90</option><option value="mixed">Humbucker e single coil (HSS)</option><option value="active">Ativos (EMG, Fishman…)</option>
+              </select></label>
+            <label class="set-field"><span>Força (saída)</span>
+              <select id="gpGuitarOutput" class="set-select">
+                <option value="">—</option><option value="low">Fraca (vintage)</option><option value="medium">Média</option><option value="high">Forte</option>
+              </select></label>
+            <label class="set-field"><span>Nome (opcional)</span>
+              <input type="text" id="gpGuitarName" maxlength="80" placeholder="ex.: Fender Stratocaster"></label>
+            <span class="ai-inst">Baixo</span>
+            <label class="set-field"><span>Captadores</span>
+              <select id="gpBassPickups" class="set-select">
+                <option value="">—</option><option value="passive">Passivos</option><option value="active">Ativos</option>
+              </select></label>
+            <label class="set-field"><span>Força (saída)</span>
+              <select id="gpBassOutput" class="set-select">
+                <option value="">—</option><option value="low">Fraca (vintage)</option><option value="medium">Média</option><option value="high">Forte</option>
+              </select></label>
+            <label class="set-field"><span>Nome (opcional)</span>
+              <input type="text" id="gpBassName" maxlength="80" placeholder="ex.: Fender Precision"></label>
+          </div>
+          <div class="pv-card-desc">Vai nos pedidos de tons à IA. Nos tons com distorção que a deteção e as sugestões propõem, também ajusta o ponto de partida: captadores fortes ou ativos tiram ganho e fecham um pouco o noise gate; single coils e P90 fecham o noise gate por causa do ruído; uma guitarra de saída fraca ganha um pouco de ganho. É uma regra prática, não uma medição: o RockForge não ouve a tua guitarra. Confere de ouvido.</div>
+          <span id="gpInfo" class="meta"></span>
+        </div>
+        <div class="pv-card pv-card-lg">
+          <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-wand"/></svg>Assistente de IA</div>
+          <div class="pv-card-desc">Para «Perguntar à IA» em «Importar tons de um texto» e em «Descrever o som», sem copiar e colar. A IA é tua: entras com a tua conta ou a tua chave, e os custos e limites são entre ti e o fornecedor. A chave fica guardada só neste computador (na pasta do RockForge) e só é enviada a esse fornecedor. Nada é pedido até carregares no botão.</div>
+          <div class="ai-providers" role="radiogroup" aria-label="Assistente de IA">
+            <label class="ai-prov"><input type="radio" name="aiProvider" value=""><span class="ai-prov-name">Nenhum</span><span class="meta">Só copiar e colar</span></label>
+            <label class="ai-prov"><input type="radio" name="aiProvider" value="openrouter"><span class="ai-prov-name">OpenRouter</span><span class="meta">Muitos modelos, alguns grátis — entras com a tua conta</span></label>
+            <label class="ai-prov"><input type="radio" name="aiProvider" value="gemini"><span class="ai-prov-name">Google Gemini</span><span class="meta">A tua chave do Google AI Studio, com uma quota grátis</span></label>
+            <label class="ai-prov"><input type="radio" name="aiProvider" value="ollama"><span class="ai-prov-name">Ollama</span><span class="meta">Um modelo neste computador: grátis e sem internet, mas os pequenos erram mais nas regulações</span></label>
+          </div>
+          <div id="aiOpenrouterBox" class="ai-box" hidden>
+            <div class="about-actions">
+              <button type="button" id="aiOrLogin" class="pv-btn pv-primary"><svg class="ic" aria-hidden="true"><use href="#i-key"/></svg>Entrar com o OpenRouter</button>
+              <button type="button" id="aiOrForget" class="pv-btn" hidden><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg>Esquecer a chave</button>
+              <span id="aiOrState" class="meta"></span>
+            </div>
+            <details class="ai-key-alt"><summary>Ou cola uma chave do OpenRouter</summary>
+              <div class="pv-row"><input type="password" id="aiOrKey" autocomplete="off" placeholder="sk-or-…" aria-label="Chave do OpenRouter">
+                <button type="button" id="aiOrKeySave" class="pv-btn">Guardar a chave</button></div>
+            </details>
+          </div>
+          <div id="aiGeminiBox" class="ai-box" hidden>
+            <div class="pv-row"><input type="password" id="aiGeKey" autocomplete="off" placeholder="AIza…" aria-label="Chave do Gemini">
+              <button type="button" id="aiGeKeySave" class="pv-btn">Guardar a chave</button>
+              <button type="button" id="aiGeForget" class="pv-btn" hidden><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg>Esquecer a chave</button></div>
+            <div class="pv-card-desc"><span id="aiGeState"></span> Cria uma chave em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.</div>
+          </div>
+          <div id="aiOllamaBox" class="ai-box" hidden>
+            <label class="set-field"><span>Endereço do Ollama (neste computador)</span>
+              <input type="text" id="aiOlUrl" placeholder="http://localhost:11434"></label>
+            <div class="pv-card-desc">Instala o Ollama e um modelo (ex.: <code>ollama pull qwen2.5:14b</code>); escolhe-o abaixo. Os modelos pequenos montam a estrutura do tom mas erram mais nos valores — o RockForge corrige o que não for válido e diz o que mudou.</div>
+          </div>
+          <div id="aiModelRow" class="ai-box" hidden>
+            <label class="set-field"><span>Modelo</span>
+              <select id="aiModel" class="set-select"></select></label>
+            <div class="about-actions"><button type="button" id="aiModelsLoad" class="pv-btn"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg>Ver os modelos</button>
+              <span id="aiModelInfo" class="meta"></span></div>
+          </div>
+          <span id="aiInfo" class="meta"></span>
         </div>
       </section>
 
@@ -2481,6 +2580,20 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
         <div style="margin-top:.75rem;border-top:1px solid var(--line);padding-top:.55rem">
           <div class="meta" style="margin-bottom:.3rem">Tons das tuas músicas <button class="info-btn" data-info="tone-collection">ⓘ</button></div>
           <button type="button" id="toneCollOpen" class="secondary" style="width:100%"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg> Procurar nos teus PSARC</button>
+        </div>
+        <div id="toneDescBlock" class="tone-desc">
+          <div class="meta" style="margin-bottom:.3rem">Descrever o som <button class="info-btn" data-info="tone-describe">ⓘ</button></div>
+          <textarea id="toneDescText" rows="3" maxlength="500" aria-label="Descreve o som" placeholder="ex.: crunch dos AC/DC, o solo de Comfortably Numb"></textarea>
+          <label class="check"><input type="checkbox" id="toneDescBass"> Tom de baixo</label>
+          <div class="anchor-row" style="gap:.35rem">
+            <button type="button" id="toneDescAsk"><svg class="ic" aria-hidden="true"><use href="#i-wand"/></svg> Perguntar à IA</button>
+            <button type="button" id="toneDescCopy" class="secondary" title="Copia o pedido para colares no ChatGPT ou noutro assistente" aria-label="Copiar o pedido"><svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg></button>
+          </div>
+          <details id="toneDescPasteWrap"><summary class="meta">Ou cola a resposta do assistente</summary>
+            <textarea id="toneDescAnswer" rows="4" spellcheck="false" aria-label="Resposta do assistente" placeholder="Cola aqui a resposta toda…"></textarea>
+            <button type="button" id="toneDescRead" class="secondary">Ler a resposta</button>
+          </details>
+          <div id="toneDescInfo" class="meta" aria-live="polite"></div>
         </div>
       </div>
       <div style="flex:2 1 420px;min-width:340px;border-left:1px solid var(--line);padding-left:1rem">

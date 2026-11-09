@@ -1472,6 +1472,7 @@ def _web_file_candidates(name: str) -> tuple[Path, ...]:
 # they had in this file; no two groups answer the same URL.
 from rockforge.interfaces.api.routers import (  # noqa: E402
     analysis,
+    assistant,
     charts,
     delivery,
     gp_export,
@@ -1488,7 +1489,7 @@ from rockforge.interfaces.api.routers import (  # noqa: E402
 from rockforge.interfaces.api.routers import settings as settings_routes  # noqa: E402
 
 for _group in (
-    imports, jobs, sync, gp_export, analysis, lyrics, tones, stems,
+    imports, jobs, sync, gp_export, analysis, lyrics, tones, assistant, stems,
     settings_routes, charts, delivery, web,
 ):
     app.include_router(_group.router)

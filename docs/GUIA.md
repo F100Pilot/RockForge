@@ -682,6 +682,13 @@ reconstruir**.
   com o carácter do tom — limpo, crunch ou distorção, escuro ou brilhante —, para os distinguires
   numa lista grande. **Não é o som real**: o RockForge não simula amplificadores; o som
   verdadeiro do tom só se ouve no jogo (ou no DLC Builder).
+- **Descrever o som**: escreve em poucas palavras o som que queres ("crunch dos AC/DC", "o solo
+  de Comfortably Numb") e o RockForge faz **um tom** com o equipamento do jogo. **Perguntar à IA**
+  pergunta ao assistente que ligaste em **Definições → Tons e IA**; o botão ao lado copia o
+  pedido para o colares no ChatGPT (ou noutro assistente) e depois colas a resposta em **Ou cola
+  a resposta do assistente** → **Ler a resposta**. O tom entra no projeto e abre no editor; cada
+  adaptação feita (um equipamento lido como o mais parecido, um controlo fora dos limites)
+  aparece por baixo. **Tom de baixo** pede um tom de baixo.
 
 ### Que tom toca cada pista
 
@@ -714,6 +721,11 @@ Em **Tons de cada pista**:
   **Aplicar a esta pista** ou **Aplicar a todas as pistas**. Em cada linha podes trocar o tom
   sugerido por um teu (do projeto, da biblioteca ou dos teus PSARC); escolher "(o sugerido)"
   desfaz a troca.
+- Se descreveste a tua guitarra em **Definições → Tons e IA**, os tons com distorção que a
+  deteção e as sugestões propõem vêm **ajustados à tua guitarra** (a marca diz o que mudou):
+  captadores fortes ou ativos tiram ganho e fecham um pouco o noise gate; single coils e P90
+  fecham o noise gate; uma guitarra de saída fraca ganha um pouco de ganho. É uma regra prática,
+  não uma medição — confere de ouvido.
 
 ### Importar tons de um texto (ChatGPT ou outro assistente)
 
@@ -734,6 +746,11 @@ texto** (depois de construir o projeto):
    grava-os. Uma pista que a resposta não refere fica como estava. O mesmo gráfico fica em
    **Tons de cada pista**, com os tons da pista no ecrã (também os que marcas à mão); clicar numa
    parte leva o cursor para lá.
+
+Com um assistente ligado em **Definições → Tons e IA**, **Perguntar à IA** faz os passos 1 e 2
+sozinho: envia o pedido, põe a resposta na caixa e mostra o que vai mudar. Antes de um modelo
+pago, diz quanto deve custar o pedido e pergunta. Se a IA responder outra coisa, a resposta
+fica na caixa para a leres.
 
 É a opinião do assistente, não uma medição: confere de ouvido.
 
@@ -858,6 +875,22 @@ info** de cada projeto.
   Rocksmith 2014; **AppID das músicas** (o DLC cujo AppID os `.psarc` levam — o jogo só mostra a
   música se tiveres esse DLC; por omissão «Cherub Rock», 248750; **Ler a pasta dlc** lista os
   AppID das tuas músicas, os teus DLC primeiro; vale para os `.psarc` construídos a seguir).
+- **Tons e IA**:
+  - **A tua guitarra e o teu baixo**: captadores, força (saída) e nome. Vai nos pedidos de tons
+    à IA e ajusta os tons com distorção que a deteção e as sugestões propõem. Guarda-se logo.
+  - **Assistente de IA**, para **Perguntar à IA** (em "Importar tons de um texto" e em
+    "Descrever o som"):
+    - **OpenRouter**: muitos modelos, alguns grátis. **Entrar com o OpenRouter** abre a página
+      deles no browser; ao voltar, a chave fica guardada. Também podes colar uma chave. Em
+      **Modelo**, "Grátis" (por omissão) ou um pago, com o preço por milhão de tokens; antes de
+      cada pedido a um modelo pago, o RockForge diz quanto deve custar e pergunta.
+    - **Google Gemini**: uma chave tua do Google AI Studio (aistudio.google.com/apikey), com
+      uma quota grátis.
+    - **Ollama**: um modelo no teu computador, grátis e sem internet (por ex. `ollama pull
+      qwen2.5:14b`). Os modelos pequenos erram mais nos valores.
+  - A IA é tua: os custos e limites são entre ti e o fornecedor. A chave fica só neste
+    computador, só é enviada a esse fornecedor e nunca aparece no registo técnico. Nada é
+    pedido até carregares no botão.
 - **Software**: no `.exe`, o cartão **Componentes extra** (o que está instalado, **Instalar
   componentes extra** / **Reinstalar**, o registo da instalação); depois, o que está instalado, o
   que falta e como o obter.

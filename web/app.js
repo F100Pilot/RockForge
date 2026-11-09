@@ -694,7 +694,7 @@ document.getElementById('batchSubmit').addEventListener('click', async () => {
 });
 
 // ── Definições: a full-screen page, one section of the rail at a time ────────
-const SETTINGS_PAGES = ['geral', 'software', 'ml', 'stems', 'volume', 'gpu'];
+const SETTINGS_PAGES = ['geral', 'ai', 'software', 'ml', 'stems', 'volume', 'gpu'];
 function showSettingsPage(name) {
   if (!SETTINGS_PAGES.includes(name)) name = 'geral';
   for (const el of document.querySelectorAll('[data-settings-page]')) el.hidden = el.dataset.settingsPage !== name;
@@ -973,6 +973,204 @@ document.getElementById('sAppIdScan').addEventListener('click', async () => {
   renderAppIdPick();
 });
 
+// ── Definições → Tons e IA ────────────────────────────────────────────────────
+// The player's instruments (/guitar-profile) and the AI that answers the tone
+// requests (/ai-assistant). Saved as they change, in files of their own: not
+// part of settingsPayload / "Guardar".
+let aiState = null;          // GET /ai-assistant: the choice, never a key
+const aiModels = {};         // provider -> [{id, name, free, prompt_price, completion_price}]
+const GP_FIELDS = [['guitar', 'Guitar'], ['bass', 'Bass']];
+
+async function loadGuitarProfile() {
+  let p;
+  try { p = await getJSON('/guitar-profile'); } catch { return; }
+  for (const [part, id] of GP_FIELDS) {
+    const v = p[part] || {};
+    document.getElementById(`gp${id}Pickups`).value = v.pickups || '';
+    document.getElementById(`gp${id}Output`).value = v.output || '';
+    document.getElementById(`gp${id}Name`).value = v.name || '';
+  }
+}
+let gpSaveTimer = null;
+function saveGuitarProfile(delay = 0) {
+  clearTimeout(gpSaveTimer);
+  gpSaveTimer = setTimeout(async () => {
+    const body = {};
+    for (const [part, id] of GP_FIELDS) {
+      body[part] = {
+        pickups: document.getElementById(`gp${id}Pickups`).value,
+        output: document.getElementById(`gp${id}Output`).value,
+        name: document.getElementById(`gp${id}Name`).value,
+      };
+    }
+    const info = document.getElementById('gpInfo');
+    try {
+      await getJSON('/guitar-profile', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      info.textContent = T('Guardado.');
+    } catch (e) { info.textContent = T('Não foi possível guardar: {err}', { err: e.message || e }); }
+  }, delay);
+}
+for (const [, id] of GP_FIELDS) {
+  document.getElementById(`gp${id}Pickups`).addEventListener('change', () => saveGuitarProfile());
+  document.getElementById(`gp${id}Output`).addEventListener('change', () => saveGuitarProfile());
+  document.getElementById(`gp${id}Name`).addEventListener('input', () => saveGuitarProfile(700));
+}
+
+async function loadAiAssistant() {
+  try { aiState = await getJSON('/ai-assistant'); } catch { return null; }
+  renderAiAssistant();
+  return aiState;
+}
+async function putAi(body) {
+  try {
+    aiState = await getJSON('/ai-assistant', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    renderAiAssistant();
+    return true;
+  } catch (e) {
+    toast(e.message || String(e));
+    return false;
+  }
+}
+// "US$ 3 / milhão" from a price per token.
+function aiPerMillion(p) {
+  const v = (Number(p) || 0) * 1e6;
+  return v >= 10 ? v.toFixed(0) : v >= 1 ? v.toFixed(2) : v.toFixed(3);
+}
+function aiModelLabel(m) {
+  if (m.free) return `${m.name} · ${T('grátis')}`;
+  if (m.prompt_price == null) return m.name;
+  return `${m.name} · ${T('US$ {i} / {o} por milhão de tokens', { i: aiPerMillion(m.prompt_price), o: aiPerMillion(m.completion_price) })}`;
+}
+function renderAiAssistant() {
+  const st = aiState;
+  if (!st) return;
+  const prov = st.provider || '';
+  document.querySelectorAll('input[name=aiProvider]').forEach(r => { r.checked = r.value === prov; });
+  document.getElementById('aiOpenrouterBox').hidden = prov !== 'openrouter';
+  document.getElementById('aiGeminiBox').hidden = prov !== 'gemini';
+  document.getElementById('aiOllamaBox').hidden = prov !== 'ollama';
+  document.getElementById('aiModelRow').hidden = !prov;
+  const orKey = !!st.has_key.openrouter, geKey = !!st.has_key.gemini;
+  document.getElementById('aiOrState').textContent = orKey ? T('Ligado: a chave está guardada neste computador.') : T('Ainda não ligado.');
+  document.getElementById('aiOrForget').hidden = !orKey;
+  document.getElementById('aiGeState').textContent = geKey ? T('Chave guardada neste computador.') : T('Ainda sem chave.');
+  document.getElementById('aiGeForget').hidden = !geKey;
+  const url = document.getElementById('aiOlUrl');
+  if (document.activeElement !== url) url.value = st.ollama_url || '';
+  const sel = document.getElementById('aiModel');
+  const current = (st.models || {})[prov] || '';
+  const list = aiModels[prov] || [];
+  const opts = [];
+  if (!list.length) opts.push(`<option value="${esc(current)}">${esc(current || T('— carrega «Ver os modelos» —'))}</option>`);
+  else {
+    if (current && !list.some(m => m.id === current)) opts.push(`<option value="${esc(current)}">${esc(current)}</option>`);
+    const free = list.filter(m => m.free), paid = list.filter(m => !m.free);
+    const group = (label, ms) => ms.length
+      ? `<optgroup label="${esc(label)}">${ms.map(m => `<option value="${esc(m.id)}">${esc(aiModelLabel(m))}</option>`).join('')}</optgroup>` : '';
+    opts.push(prov === 'openrouter' ? group(T('Grátis'), free) + group(T('Pagos'), paid)
+      : list.map(m => `<option value="${esc(m.id)}">${esc(aiModelLabel(m))}</option>`).join(''));
+  }
+  sel.innerHTML = opts.join('');
+  sel.value = current;
+  const m = list.find(x => x.id === current);
+  document.getElementById('aiModelInfo').textContent = !prov ? ''
+    : m && m.free ? T('Grátis — os modelos grátis têm limites de pedidos por dia.')
+    : m && m.prompt_price != null ? T('Pago: cada pedido de tons custa cerca de US$ {c}. É perguntado antes de cada pedido.', { c: aiCostOf(m, 20000, 3000).toFixed(3) })
+    : prov === 'gemini' ? T('O custo depende do teu plano do Google AI Studio (há uma quota grátis).') : '';
+  document.getElementById('aiInfo').textContent = prov && !st.ready
+    ? (prov === 'ollama' || current ? T('Falta ligar o assistente (a chave) para poder perguntar.') : T('Falta escolher o modelo.'))
+    : st.ready ? T('Pronto: «Perguntar à IA» está ligado.') : '';
+}
+function aiCostOf(m, promptChars, outTokens) {
+  const inTok = Math.ceil(promptChars / 3.5);
+  return inTok * (Number(m.prompt_price) || 0) + outTokens * (Number(m.completion_price) || 0);
+}
+document.querySelectorAll('input[name=aiProvider]').forEach(r => r.addEventListener('change', async () => {
+  if (!r.checked) return;
+  await putAi({ provider: r.value });
+  if (r.value && !(aiModels[r.value] || []).length && (r.value !== 'gemini' || aiState?.has_key.gemini)) loadAiModels();
+}));
+async function loadAiModels() {
+  const prov = aiState?.provider;
+  if (!prov) return;
+  const info = document.getElementById('aiModelInfo');
+  info.textContent = T('A pedir a lista de modelos…');
+  try {
+    aiModels[prov] = await getJSON(`/ai-assistant/models?provider=${encodeURIComponent(prov)}`);
+  } catch (e) {
+    info.textContent = T('Não foi possível ver os modelos: {err}', { err: e.message || e });
+    return;
+  }
+  const list = aiModels[prov];
+  if (!(aiState.models || {})[prov] && list.length) {
+    // nothing chosen yet: the free router, a Flash model, or the first one
+    const pick = list.find(m => m.id === 'openrouter/free') || list.find(m => /flash/i.test(m.id)) || list[0];
+    await putAi({ model_provider: prov, model: pick.id });
+  } else renderAiAssistant();
+}
+document.getElementById('aiModelsLoad').addEventListener('click', loadAiModels);
+document.getElementById('aiModel').addEventListener('change', e => {
+  if (aiState?.provider) putAi({ model_provider: aiState.provider, model: e.target.value });
+});
+for (const [btn, input, prov] of [['aiOrKeySave', 'aiOrKey', 'openrouter'], ['aiGeKeySave', 'aiGeKey', 'gemini']]) {
+  document.getElementById(btn).addEventListener('click', async () => {
+    const el = document.getElementById(input);
+    if (!el.value.trim()) { toast(T('Cola primeiro a chave.')); return; }
+    if (await putAi({ key_provider: prov, key: el.value.trim() })) {
+      el.value = '';
+      toast(T('Chave guardada.'), 'ok');
+      if (prov === 'gemini' && !(aiModels.gemini || []).length) loadAiModels();
+    }
+  });
+}
+document.getElementById('aiOrForget').addEventListener('click', () => putAi({ forget_key: 'openrouter' }));
+document.getElementById('aiGeForget').addEventListener('click', () => putAi({ forget_key: 'gemini' }));
+document.getElementById('aiOlUrl').addEventListener('change', e => putAi({ ollama_url: e.target.value }));
+let aiLoginTimer = null;
+document.getElementById('aiOrLogin').addEventListener('click', async () => {
+  let r;
+  try { r = await getJSON('/ai-assistant/openrouter/login', { method: 'POST' }); } catch (e) { toast(e.message || String(e)); return; }
+  window.open(r.url, '_blank', 'noopener');
+  document.getElementById('aiOrState').textContent = T('Acaba a entrada na página do OpenRouter que abriu; esta página atualiza-se sozinha.');
+  clearInterval(aiLoginTimer);
+  const until = Date.now() + 10 * 60 * 1000;
+  aiLoginTimer = setInterval(async () => {
+    if (Date.now() > until) { clearInterval(aiLoginTimer); renderAiAssistant(); return; }
+    let st;
+    try { st = await getJSON('/ai-assistant'); } catch { return; }
+    if (st.has_key.openrouter) {
+      clearInterval(aiLoginTimer);
+      aiState = st;
+      renderAiAssistant();
+      toast(T('OpenRouter ligado.'), 'ok');
+      if (!(aiModels.openrouter || []).length) loadAiModels();
+    }
+  }, 2000);
+});
+
+// Before a request goes to the AI: one is chosen and ready, and a paid model
+// says what the request should cost and asks. Returns false to stop.
+async function aiReadyToAsk(promptChars, outTokens) {
+  const st = await loadAiAssistant() || aiState;
+  if (!st || !st.ready) {
+    toast(T('Escolhe primeiro a IA em Definições → Tons e IA.'));
+    openSettings('ai');
+    return false;
+  }
+  if (st.provider !== 'openrouter') return true;
+  const model = (st.models || {}).openrouter;
+  if (!(aiModels.openrouter || []).length) {
+    try { aiModels.openrouter = await getJSON('/ai-assistant/models?provider=openrouter'); } catch { aiModels.openrouter = []; }
+  }
+  const m = (aiModels.openrouter || []).find(x => x.id === model);
+  if (m && m.free) return true;
+  if (!m || m.prompt_price == null) {
+    return confirmModal(T('Não sei o preço do modelo {m}. Pode ser pago. Perguntar mesmo assim?', { m: model }), T('Perguntar'));
+  }
+  const cost = aiCostOf(m, promptChars, outTokens);
+  return confirmModal(T('O modelo {m} é pago: este pedido deve custar cerca de US$ {c} (cobrado na tua conta do OpenRouter). Perguntar?', { m: m.name, c: cost.toFixed(3) }), T('Perguntar'));
+}
+
 async function openSettings(pageWanted) {
   document.getElementById('settingsInfo').textContent = '';
   try {
@@ -982,6 +1180,8 @@ async function openSettings(pageWanted) {
   try { page = localStorage.getItem('rf-settings-page') || page; } catch { /* storage blocked */ }
   showSettingsPage(typeof pageWanted === 'string' ? pageWanted : page);
   document.getElementById('settingsOverlay').hidden = false;
+  loadGuitarProfile();
+  loadAiAssistant();
   loadSystemCheck();
   pollComponents();
   loadAppIds();
@@ -1981,6 +2181,13 @@ const INFO = {
 <p><strong>Por pista:</strong> no jogo os tons são <strong>por arranjo</strong>. Com "Mesmos tons em todas as pistas" marcado, todas usam o mesmo conjunto; desmarcado, cada pista (a que está aberta na partitura) tem o seu tom base, extras e trocas — o Lead pode ir para um tom de solo enquanto o Rhythm fica no crunch. Os tons criados são partilhados.</p>
 <p><strong>Ouvir (aproximação):</strong> o botão ▶ num tom toca uma frase curta com o carácter dele — limpo, crunch ou distorção, escuro ou brilhante — para os distinguires numa lista grande. <strong>Não é o som real</strong>: o RockForge não simula amplificadores; o som verdadeiro do tom só existe no jogo (ou no DLC Builder), que o gera a partir do equipamento escolhido.</p>
 <p>Só se aplicam a projetos de Guitar Pro. Sem tons definidos, o DLC Builder marca "tone missing" e resolves com a biblioteca dele.</p>`)
+  },
+  'tone-describe': {
+    title: T('Descrever o som'),
+    body: T(`<p>Escreve em poucas palavras o som que queres — "crunch dos AC/DC", "o solo de Comfortably Numb", "limpo com chorus dos anos 80" — e o RockForge faz <strong>um tom</strong> com o equipamento do jogo.</p>
+<p><strong>"Perguntar à IA"</strong> pergunta ao assistente escolhido em Definições → Tons e IA (OpenRouter, Google Gemini ou Ollama no teu computador). Antes de um modelo pago, diz quanto deve custar e pergunta. <strong>Copiar o pedido</strong> põe o mesmo pedido no clipboard para o colares no ChatGPT ou noutro assistente; depois cola a resposta em "Ou cola a resposta" e carrega em "Ler a resposta".</p>
+<p>O pedido leva a tua guitarra (ou o teu baixo), se a descreveste em Definições. O tom entra no projeto e abre aqui no editor: ouve, ajusta e guarda. Cada adaptação que foi preciso fazer (um equipamento lido como o mais parecido, um controlo fora dos limites) aparece por baixo.</p>
+<p><strong>Limites honestos:</strong> é a opinião do assistente, não uma medição — confere de ouvido, no jogo.</p>`)
   },
   'tone-plan': {
     title: T('Importar tons de um texto'),
@@ -6587,7 +6794,7 @@ function toneCardHtml(t, opts = {}) {
       : { label: T('Distorção'), color: '#ff6b6b' };
   const vol = t.volume != null ? Math.round(-t.volume * 10) / 10 : null;
   return `<div class="tn-tone">
-    <div class="tn-tone-name"><span class="tn-dot" style="background:${kind.color}"></span>${esc(t.name || t.key)}</div>
+    <div class="tn-tone-name"><span class="tn-dot" style="background:${kind.color}"></span>${esc(t.name || t.key)}${fittedBadge(t)}</div>
     ${gear ? `<div class="tn-tone-gear">${esc(gear)}</div>` : ''}
     <div class="tn-tags"><span class="tn-tag">${kind.label}</span>${vol != null ? `<span class="tn-tag tn-vol-tag">${T('Volume {v}', { v: vol })}</span>` : ''}</div>
     ${opts.volume ? toneVolumeRowHtml(t) : ''}
@@ -7035,6 +7242,80 @@ document.getElementById('teSaveLibrary').addEventListener('click', async () => {
   toneLibrary = (await r.json()).tones || [];
   populateToneLibSelect();
   toast(T('Guardado na biblioteca.'), 'ok');
+});
+
+// ── "Descrever o som": one tone from a few words (/tone-prompt, /tone-text,
+// /tone-ask). The tone that comes back goes into the project like a library
+// tone (addToneToProject) and opens in the editor; what the reader adapted is
+// listed under the box.
+function toneDescription() {
+  return { description: document.getElementById('toneDescText').value.trim(),
+    bass: document.getElementById('toneDescBass').checked };
+}
+function showToneDescResult(body, fromAi) {
+  const info = document.getElementById('toneDescInfo');
+  const tones = body.tones || [];
+  for (const t of tones) addToneToProject(t);
+  const notes = tones.map(t => (body.notes || {})[t.key]).filter(Boolean);
+  const warns = body.warnings || [];
+  info.innerHTML = (tones.length
+    ? `${icon('check')} ${esc(T('Tom criado: {n}. Está aberto no editor — ouve, ajusta e guarda.', { n: tones.map(t => t.name || t.key).join(', ') }))}`
+    : '') +
+    (fromAi && body.model ? ` <span>${esc(T('(respondeu {m})', { m: body.model }))}</span>` : '') +
+    notes.map(n => `<div>${esc(n)}</div>`).join('') +
+    (warns.length ? `<ul>${warns.map(w => `<li>${esc(w)}</li>`).join('')}</ul>` : '');
+}
+document.getElementById('toneDescCopy').addEventListener('click', async () => {
+  const d = toneDescription();
+  if (!d.description) { toast(T('Descreve primeiro o som.')); return; }
+  try {
+    const r = await getJSON(`/tone-prompt?description=${encodeURIComponent(d.description)}&bass=${d.bass}`);
+    await navigator.clipboard.writeText(r.prompt);
+    document.getElementById('toneDescPasteWrap').open = true;
+    toast(T('Pedido copiado. Cola-o no ChatGPT (ou noutro assistente) e depois cola aqui a resposta.'), 'ok');
+  } catch (e) {
+    toast(T('Não foi possível copiar: {err}', { err: e.message || e }), 'err');
+  }
+});
+document.getElementById('toneDescRead').addEventListener('click', async () => {
+  const text = document.getElementById('toneDescAnswer').value;
+  if (!text.trim()) { toast(T('Cola primeiro a resposta do assistente.')); return; }
+  const info = document.getElementById('toneDescInfo');
+  try {
+    const body = await getJSON('/tone-text', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+    showToneDescResult(body, false);
+  } catch (e) {
+    info.textContent = e.message || String(e);
+  }
+});
+let toneDescAsking = false;
+document.getElementById('toneDescAsk').addEventListener('click', async () => {
+  const d = toneDescription();
+  if (!d.description) { toast(T('Descreve primeiro o som.')); return; }
+  if (toneDescAsking) return;
+  if (!await aiReadyToAsk(18000 + d.description.length, 1500)) return;
+  const info = document.getElementById('toneDescInfo');
+  const btn = document.getElementById('toneDescAsk');
+  toneDescAsking = true;
+  btn.disabled = true;
+  info.textContent = T('A perguntar a {m}… pode demorar um minuto.', { m: (aiState.models || {})[aiState.provider] || aiState.provider });
+  try {
+    const r = await fetch('/tone-ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+    const body = await r.json().catch(() => ({}));
+    if (r.ok) showToneDescResult(body, true);
+    else {
+      info.textContent = typeof body.detail === 'string' ? body.detail : T('A IA não respondeu.');
+      if (body.answer) {
+        document.getElementById('toneDescAnswer').value = body.answer;
+        document.getElementById('toneDescPasteWrap').open = true;
+      }
+    }
+  } catch (e) {
+    info.textContent = e.message || String(e);
+  } finally {
+    toneDescAsking = false;
+    btn.disabled = false;
+  }
 });
 
 // ── The tones of the songs in the player's Rocksmith dlc folder ──
@@ -8267,6 +8548,19 @@ function _profileBar(label, value) {
     `<span class="tone-prof-val">${pct}%</span></div>`;
 }
 
+// A handed-out preset fitted to the player's guitar (Definições → Tons e IA)
+// says so; the note goes before the tone enters the project.
+function fittedBadge(t) {
+  const changes = (t && t.fitted) || [];
+  if (!changes.length) return '';
+  return `<span class="tone-fitted" title="${esc(changes.join('\n'))}">${icon('guitar')} ${esc(T('ajustado à tua guitarra'))}</span>`;
+}
+function withoutFitted(t) {
+  if (!t || !t.fitted) return t;
+  const { fitted: _fitted, ...rest } = t;
+  return rest;
+}
+
 function _candidateList(role, candidates, bassCharacter) {
   if (!candidates || !candidates.length) return '';
   // The bass tones carry no % (GitHub issue #16): the separated bass is only
@@ -8274,7 +8568,7 @@ function _candidateList(role, candidates, bassCharacter) {
   const bass = role === 'bass';
   const rows = candidates.map(c => {
     const m = Math.round(Number(c.match) || 0);
-    return `<div class="tone-cand"><span class="tone-cand-name">${esc(c.name || c.key)}</span>` +
+    return `<div class="tone-cand"><span class="tone-cand-name">${esc(c.name || c.key)}${fittedBadge(c)}</span>` +
       (bass ? listenButtonHtml(c)
         : `<span class="tone-cand-match" title="${T('Semelhança estimada com o gravado')}">${m}%</span>`) +
       `<button type="button" class="secondary tone-cand-use" data-role="${esc(role)}" data-key="${esc(c.key)}">${T('usar')}</button></div>`;
@@ -8343,7 +8637,7 @@ function _findCandidate(role, key) {
 // (so picking a different Lead doesn't wipe the Rhythm the user already chose).
 function applyOneTone(role, key) {
   if (!_lastToneDetection) return;
-  const tone = _findCandidate(role, key);
+  const tone = withoutFitted(_findCandidate(role, key));
   if (!tone) { toast(T('Tom não encontrado.')); return; }
   if (role === 'bass') { applyBassTone(tone); return; }
   if (refuseGuitarToneOnBass()) return;
@@ -8379,8 +8673,8 @@ function applyBassTone(tone) {
 function applyDetectedTones(detected) {
   if (!detected.lead || !detected.rhythm) { toast(T('Sem tons detetados.')); return; }
   if (refuseGuitarToneOnBass()) return;
-  const lead = detected.lead;
-  const rhythm = detected.rhythm;
+  const lead = withoutFitted(detected.lead);
+  const rhythm = withoutFitted(detected.rhythm);
   // Merge into current tones, replacing any existing RF-detected ones.
   jobTones = jobTones.filter(t => !t.key.startsWith('RF'));
   jobTones.push(lead, rhythm);
@@ -8682,7 +8976,7 @@ function applyToneSuggestion(plans) {
   if (Object.keys(keyMap).length) saveToneSwaps();  // they now point at the project's copies
   for (const p of plans) {
     for (const tone of p.tones || []) {
-      if (!keyMap[tone.key] && !jobTones.some(t => t.key === tone.key)) jobTones.push(tone);
+      if (!keyMap[tone.key] && !jobTones.some(t => t.key === tone.key)) jobTones.push(withoutFitted(tone));
     }
   }
   const setOf = p => cleanToneSet(swapPlan(p, keyMap));
@@ -8720,6 +9014,7 @@ function initTonePlanCard() {
   const card = document.getElementById('tonePlanCard');
   card.hidden = !(selectedJob && isGpJob() && selectedJob.status === 'completed');
   document.getElementById('tonePlanText').value = '';
+  document.getElementById('tonePlanAskInfo').textContent = '';
   renderTonePlan();
 }
 
@@ -8732,6 +9027,44 @@ document.getElementById('tonePlanCopy').addEventListener('click', async () => {
   } catch (e) {
     toast(T('Não foi possível copiar: {err}', { err: e.message || e }), 'err');
   }
+});
+
+// "Perguntar à IA": the same request, sent by the server to the AI chosen in
+// Definições → Tons e IA; its answer fills the paste box and is read like a
+// pasted one. An answer that is not a plan still shows what the AI said.
+let tonePlanAsking = false;
+document.getElementById('tonePlanAsk').addEventListener('click', async () => {
+  if (!selectedJob || tonePlanAsking) return;
+  const id = selectedJob.id;
+  let prompt = '';
+  try { prompt = (await getJSON(`/jobs/${id}/tone-plan/prompt`)).prompt || ''; } catch (e) { toast(e.message || String(e)); return; }
+  if (!await aiReadyToAsk(prompt.length, 3000)) return;
+  const info = document.getElementById('tonePlanAskInfo');
+  const btn = document.getElementById('tonePlanAsk');
+  const model = (aiState.models || {})[aiState.provider] || aiState.provider;
+  tonePlanAsking = true;
+  btn.disabled = true;
+  info.textContent = T('A perguntar a {m}… pode demorar um ou dois minutos.', { m: model });
+  try {
+    const r = await fetch(`/jobs/${id}/tone-plan/ask`, { method: 'POST' });
+    const body = await r.json().catch(() => ({}));
+    if (selectedJob && selectedJob.id !== id) return;
+    if (body.answer) document.getElementById('tonePlanText').value = body.answer;
+    if (!r.ok) {
+      tonePlan = { error: body.detail || r.status };
+      info.textContent = body.answer ? T('A IA respondeu, mas não com um plano de tons: a resposta está na caixa abaixo.') : '';
+    } else {
+      tonePlan = body;
+      info.textContent = T('Respondeu: {m}. Vê o que vai mudar antes de aplicar.', { m: body.model || model });
+    }
+  } catch (e) {
+    tonePlan = { error: e.message || String(e) };
+    info.textContent = '';
+  } finally {
+    tonePlanAsking = false;
+    btn.disabled = false;
+  }
+  renderTonePlan();
 });
 
 document.getElementById('tonePlanPreview').addEventListener('click', async () => {

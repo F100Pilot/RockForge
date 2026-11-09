@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib
 import json
 import time
+import urllib.parse
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -4183,6 +4184,141 @@ def test_a_tone_plan_pasted_as_text_becomes_tones_and_changes_without_storing_an
     assert client.get(f"{url}/tones").json() == before          # a preview stores nothing
     r = client.post(f"{url}/tone-plan/preview", json={"text": "use a Marshall at the solo"})
     assert r.status_code == 422 and r.json()["detail"]
+
+
+def test_the_players_guitar_reaches_the_requests_and_fits_the_handed_out_presets(
+    client: TestClient, tmp_path
+) -> None:
+    """The guitar profile is stored on its own, named in the song's request, and
+    the driven presets the detection and the per-section suggestions hand out come
+    set for it — said on each one — while what is stored stays the preset."""
+    from rockforge.infrastructure.packaging.gear import tone_presets
+
+    assert client.get("/guitar-profile").json()["guitar"] == {
+        "pickups": "", "output": "", "name": ""}
+    r = client.put("/guitar-profile", json={"guitar": {"pickups": "active", "output": "high",
+                                                       "name": "ESP LTD"}})
+    assert r.status_code == 200 and r.json()["guitar"]["pickups"] == "active"
+    preset = tone_presets._preset("RFLead_HighGain")
+    timeline = [[float(t), 0.8, 0.5, 0.5, 1] for t in range(26)]
+    job = _built_two_track_job(client, tmp_path, detected={
+        "status": "ready", "timeline": timeline, "lead": preset,
+        "lead_candidates": [preset], "rhythm_candidates": [],
+        "profile": {"gain_level": 0.8, "brightness": 0.5, "low_end": 0.5},
+    })
+    url = f"/jobs/{job['id']}"
+    prompt = client.get(f"{url}/tone-plan/prompt", headers={"X-RockForge-Lang": "en"}).json()
+    assert "My guitar: ESP LTD, active pickups, high output" in prompt["prompt"]
+    detected = client.get(f"{url}/detected-tones", headers={"X-RockForge-Lang": "en"}).json()
+    fitted = detected["lead_candidates"][0]
+    assert fitted["amp"]["knobs"]["Amp_CA100_Gain"] == 75
+    assert any("hot pickups" in c for c in fitted["fitted"])
+    assert detected["lead"]["fitted"]
+    tracks = client.get(f"{url}/tone-suggestions").json()["tracks"]
+    driven = [t for tr in tracks for t in tr["tones"]
+              if (t.get("pre") or [{}])[0].get("key") == "Pedal_NoiseGate"]
+    assert driven and all(t.get("fitted") for t in driven)
+    # back to saying nothing: the presets as they are
+    client.put("/guitar-profile", json={})
+    plain = client.get(f"{url}/detected-tones").json()["lead_candidates"][0]
+    assert "fitted" not in plain and plain["amp"]["knobs"]["Amp_CA100_Gain"] == 85
+
+
+def test_the_ai_is_asked_for_the_songs_tones_and_for_one_tone(
+    client: TestClient, tmp_path, monkeypatch
+) -> None:
+    """"Perguntar à IA" sends the same request the copy button copies and reads
+    the answer as a pasted one; an answer that is not tones comes back with what
+    the AI said; an AI that cannot answer says why with its own status."""
+    from rockforge.infrastructure import ai_assistant
+
+    plan = {"tones": [{"name": "Chug", "amp": "Amp_MarshallJCM800"}],
+            "changes": [{"track": "all", "at": "start", "tone": "Chug"}]}
+    asked: list[str] = []
+    replies: list[object] = []
+
+    def fake_ask(prompt: str, **_kw: object) -> ai_assistant.Answer:
+        asked.append(prompt)
+        item = replies.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return ai_assistant.Answer(text=str(item), provider="gemini", model="gemini-x")
+
+    monkeypatch.setattr(ai_assistant, "ask", fake_ask)
+    job = _built_two_track_job(client, tmp_path)
+    url = f"/jobs/{job['id']}"
+    replies.append("```json\n" + json.dumps(plan) + "\n```")
+    r = client.post(f"{url}/tone-plan/ask")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["model"] == "gemini-x" and "Chug" in body["answer"]
+    assert [t["name"] for t in body["tones"]] == ["Chug"] and body["tracks"]
+    assert asked[0] == client.get(f"{url}/tone-plan/prompt").json()["prompt"]
+    replies.append("Sorry, I cannot help with that.")
+    r = client.post(f"{url}/tone-plan/ask")
+    assert r.status_code == 422 and r.json()["answer"] == "Sorry, I cannot help with that."
+    replies.append(ai_assistant.AiError("no key", 409))
+    r = client.post(f"{url}/tone-plan/ask")
+    assert r.status_code == 409 and r.json()["detail"] == "no key"
+
+    # one tone from a few words
+    prompt = client.get("/tone-prompt", params={"description": "AC/DC crunch"},
+                        headers={"X-RockForge-Lang": "en"}).json()["prompt"]
+    assert "“AC/DC crunch”" in prompt and "Amp_MarshallPlexi" in prompt
+    assert client.get("/tone-prompt", params={"description": "  "}).status_code == 422
+    one = {"tones": [{"name": "AC/DC crunch", "amp": {"key": "Amp_MarshallPlexi"}}]}
+    r = client.post("/tone-text", json={"text": json.dumps(one)})
+    assert r.status_code == 200 and r.json()["tones"][0]["amp"]["key"] == "Amp_MarshallPlexi"
+    assert client.post("/tone-text", json={"text": "no json here"}).status_code == 422
+    replies.append(json.dumps(one))
+    r = client.post("/tone-ask", json={"description": "AC/DC crunch", "bass": False})
+    assert r.status_code == 200 and r.json()["model"] == "gemini-x"
+    assert "AC/DC crunch" in asked[-1]
+    replies.append("nope")
+    r = client.post("/tone-ask", json={"description": "x"})
+    assert r.status_code == 422 and r.json()["answer"] == "nope"
+    replies.append(ai_assistant.AiError("limit", 429))
+    assert client.post("/tone-ask", json={"description": "x"}).status_code == 429
+
+
+def test_the_ai_settings_never_send_a_key_back_and_openrouter_signs_in(
+    client: TestClient, monkeypatch
+) -> None:
+    from rockforge.infrastructure import ai_assistant
+
+    r = client.put("/ai-assistant", json={"provider": "gemini", "key_provider": "gemini",
+                                          "key": "AIzaSECRET0123456789012345678901234",
+                                          "model_provider": "gemini", "model": "gemini-x"})
+    assert r.status_code == 200 and r.json()["ready"] is True
+    assert "AIzaSECRET" not in client.get("/ai-assistant").text
+    assert client.put("/ai-assistant", json={"ollama_url": "http://10.0.0.5:11434"}
+                      ).status_code == 422
+    assert client.put("/ai-assistant", json={"provider": "skynet"}).status_code == 422
+    monkeypatch.setattr(ai_assistant, "list_models", lambda p: [
+        {"id": "m", "name": "M", "free": None, "prompt_price": None, "completion_price": None,
+         "context": None}])
+    assert client.get("/ai-assistant/models", params={"provider": "gemini"}).json()[0]["id"] == "m"
+
+    url = client.post("/ai-assistant/openrouter/login").json()["url"]
+    q = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+    assert q["callback_url"] == ["http://testserver/ai-assistant/openrouter/callback"]
+    bad = client.get("/ai-assistant/openrouter/callback", params={"code": "c", "state": "x"})
+    assert bad.status_code == 400 and "<h1" in bad.text
+    assert client.get("/ai-assistant/openrouter/callback", params={"error": "access_denied"}
+                      ).status_code == 400
+    sent: list[dict] = []
+
+    def fake_request(method: str, target: str, **kw: object) -> dict:
+        sent.append({"url": target, **kw})
+        return {"key": "sk-or-v1-fromlogin0123456789", "user_id": "u"}
+
+    monkeypatch.setattr(ai_assistant, "_request", fake_request)
+    ok = client.get("/ai-assistant/openrouter/callback",
+                    params={"code": "the-code", "state": q["state"][0]})
+    assert ok.status_code == 200 and sent[0]["url"].endswith("/auth/keys")
+    state = client.get("/ai-assistant").json()
+    assert state["provider"] == "openrouter" and state["has_key"]["openrouter"] is True
+    assert "sk-or-v1" not in client.get("/ai-assistant").text
 
 
 def test_the_tones_chosen_in_place_of_the_suggested_ones_are_kept_with_the_project(

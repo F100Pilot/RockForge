@@ -29,6 +29,25 @@ def test_secrets_and_the_account_name_are_taken_out(monkeypatch: pytest.MonkeyPa
     assert "C:\\Users\\<user>\\Desktop\\a.gp5" in text
 
 
+def test_the_ai_assistants_keys_never_reach_the_log(tmp_path: Path,
+                                                   monkeypatch: pytest.MonkeyPatch) -> None:
+    """Invented keys: the shapes OpenRouter and Google give, a stored key of any
+    shape, and the Gemini header."""
+    monkeypatch.setenv("ROCKFORGE_WORK_DIR", str(tmp_path))
+    from rockforge import config
+
+    importlib.reload(config)
+    from rockforge.infrastructure import ai_assistant
+
+    ai_assistant.update(provider="gemini", key=("gemini", "custom-stored-key-0123"))
+    text = app_logging.redact(
+        "sent sk-or-v1-0123456789abcdef0123 and AIzaSyInventedKey0123456789012345678 "
+        "x-goog-api-key: whatever-value; then custom-stored-key-0123")
+    for secret in ("sk-or-v1-0123456789abcdef0123", "AIzaSyInventedKey0123456789012345678",
+                   "whatever-value", "custom-stored-key-0123"):
+        assert secret not in text
+
+
 def test_the_log_rotates_and_a_second_setup_does_not_write_twice(tmp_path: Path) -> None:
     path = app_logging.configure(tmp_path, level="INFO", loggers=("rockforge-test",))
     assert path == tmp_path / "logs" / "rockforge.log"

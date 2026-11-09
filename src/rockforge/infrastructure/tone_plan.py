@@ -726,10 +726,9 @@ def _tracks_for(value: object, charts: list[ChartContext]) -> tuple[list[ChartCo
     return out, unknown
 
 
-def read_plan(text: str, ctx: PlanContext) -> PlanResult:
-    """The tones and each chart's tone changes a pasted answer describes."""
-    data = extract_plan(text)
-    res = PlanResult()
+def _read_tone_list(data: dict[str, Any], res: PlanResult) -> dict[str, str]:
+    """The block's tones into ``res`` (and its notes/sources); the map from
+    every name a change may use to the tone's key."""
     warn = res.warnings
     raw_tones = _get(data, "tones")
     if not isinstance(raw_tones, list) or not raw_tones:
@@ -772,6 +771,24 @@ def read_plan(text: str, ctx: PlanContext) -> PlanResult:
         res.sources = [str(s)[:300] for s in src if str(s).strip()][:20]
     elif isinstance(src, str) and src.strip():
         res.sources = [src.strip()[:300]]
+    return by_ref
+
+
+def read_tones(text: str) -> PlanResult:
+    """Only the tones of an answer (one tone asked from a description): the
+    same reading as :func:`read_plan`, with no charts and no changes."""
+    data = extract_plan(text)
+    res = PlanResult()
+    _read_tone_list(data, res)
+    return res
+
+
+def read_plan(text: str, ctx: PlanContext) -> PlanResult:
+    """The tones and each chart's tone changes a pasted answer describes."""
+    data = extract_plan(text)
+    res = PlanResult()
+    warn = res.warnings
+    by_ref = _read_tone_list(data, res)
 
     raw_changes = _get(data, "changes")
     raw_changes = raw_changes if isinstance(raw_changes, list) else []
@@ -995,9 +1012,11 @@ _EXAMPLE = """{
 }"""
 
 
-def build_prompt(ctx: PlanContext) -> str:
+def build_prompt(ctx: PlanContext, guitar: str = "") -> str:
     """The request for an assistant, in the user's language (the format and the
-    gear list stay in English: they are what its answer must use verbatim)."""
+    gear list stay in English: they are what its answer must use verbatim).
+    ``guitar`` is what the player plays (``guitar_profile.describe``), "" when
+    they did not say."""
     bass = any(c.bass for c in ctx.charts)
     ref = next((c for c in ctx.charts if not c.bass), ctx.charts[0] if ctx.charts else None)
     song_end = max((c.end for c in ctx.charts), default=ctx.pad_s) - ctx.pad_s
@@ -1069,9 +1088,76 @@ def build_prompt(ctx: PlanContext) -> str:
     secs = tr("Secções (compasso — tempo na gravação)", "Sections (bar — time in the recording)")
     gear = tr("Equipamento do jogo (chave (nome): controlos [mín–máx; por omissão])",
               "The game's gear (key (name): knobs [min–max; default])")
-    return "\n\n".join([
+    return "\n\n".join(part for part in [
         head,
         tr(rules_pt, rules_en),
         f"{song}:\n- {dur}: {_fmt(song_end)}\n{tracks}:\n{charts}\n{secs}:\n{sections}",
+        guitar,
         f"{gear}:\n{gear_list(bass)}",
-    ])
+    ] if part)
+
+
+MAX_DESCRIPTION = 500
+
+_ONE_EXAMPLE = """{
+  "tones": [
+    {
+      "name": "AC/DC crunch",
+      "description": "why this tone, and how sure you are",
+      "amp": {"key": "Amp_MarshallPlexi",
+              "knobs": {"Loudness1": 60, "Bass": 50, "Treble": 65}},
+      "cabinet": "Cab_Marshall1960a_57_Cone",
+      "pre_pedals": [],
+      "post_pedals": [],
+      "racks": [],
+      "volume": 18,
+      "descriptors": ["Crunch"]
+    }
+  ],
+  "sources": ["where the information comes from, if anywhere"]
+}"""
+
+
+def build_tone_prompt(description: str, *, bass: bool = False, guitar: str = "") -> str:
+    """The request for ONE tone from a few words ("AC/DC crunch", "the Comfortably
+    Numb solo"), read back by :func:`read_tones`. Same format and gear list as the
+    song's request; ``bass`` asks for a bass tone and lists the bass gear."""
+    what = " ".join(str(description).split())[:MAX_DESCRIPTION]
+    descriptors = ", ".join(gear_catalogue.TONE_DESCRIPTORS)
+    fence = f"```json\n{_ONE_EXAMPLE}\n```"
+    inst_pt, inst_en = ("baixo", "bass") if bass else ("guitarra", "guitar")
+    head = tr(
+        f"Estou a criar um tom de {inst_pt} para o Rocksmith 2014 com o RockForge. O som que "
+        f"quero: «{what}». Monta UM tom com o equipamento do jogo que soe o mais parecido "
+        "possível.",
+        f"I am making a Rocksmith 2014 {inst_en} tone with RockForge. The sound I want: "
+        f"“{what}”. Build ONE tone from the game's gear that sounds as close as possible.",
+    )
+    rules = tr("\n".join([
+        "Responde com UM bloco JSON, exatamente neste formato (chaves em inglês), com um só tom "
+        "em \"tones\", e nada fora dele além de uma frase, se quiseres:", "", fence, "",
+        "Regras:",
+        "- Usa só equipamento da lista abaixo, pela chave (\"key\"). Os nomes são os do jogo; a "
+        "chave diz muitas vezes o equipamento real que imita (Amp_MarshallJCM800).",
+        "- Controlos (\"knobs\") pelo nome, dentro dos limites indicados [mín–máx; valor por "
+        "omissão]; um controlo que não indicares fica no valor por omissão.",
+        "- No máximo 4 pedais antes do amplificador, 4 depois e 4 racks.",
+        "- \"volume\": de 0.1 a 36, mais alto é mais forte; 18 é o nível normal.",
+        f"- \"descriptors\": um a três de: {descriptors}.",
+        "- Diz em \"description\" quando não tens a certeza. Não inventes fontes.",
+    ]), "\n".join([
+        "Answer with ONE JSON block, exactly in this format, with one tone in \"tones\", and "
+        "nothing outside it but a sentence if you like:", "", fence, "", "Rules:",
+        "- Use only gear from the list below, by its \"key\". The names are the game's; the key "
+        "often names the real gear it imitates (Amp_MarshallJCM800).",
+        "- Knobs by name, within the limits shown [min–max; default]; a knob you leave out "
+        "stays at its default.",
+        "- At most 4 pedals before the amp, 4 after and 4 racks.",
+        "- \"volume\": 0.1 to 36, higher is louder; 18 is the usual level.",
+        f"- \"descriptors\": one to three of: {descriptors}.",
+        "- Say in \"description\" when you are not sure. Do not invent sources.",
+    ]))
+    gear = tr("Equipamento do jogo (chave (nome): controlos [mín–máx; por omissão])",
+              "The game's gear (key (name): knobs [min–max; default])")
+    return "\n\n".join(part for part in [
+        head, rules, guitar, f"{gear}:\n{gear_list(bass)}"] if part)

@@ -47,6 +47,10 @@ _SECRET_PATTERNS = [
     (re.compile(r"(?i)\b(password|passwd|token|api[_-]?key|secret)(\s*[:=]\s*)[^\s&,;'\"]+"),
      r"\1\2<redacted>"),
     (re.compile(r"(?i)\b(basic|bearer)\s+[A-Za-z0-9+/=._-]{8,}"), r"\1 <redacted>"),
+    (re.compile(r"(?i)\b(x-goog-api-key)(\s*[:=]\s*)\S+"), r"\1\2<redacted>"),
+    # The AI assistants' own key shapes (OpenRouter, Google), wherever they turn up.
+    (re.compile(r"\bsk-or-[A-Za-z0-9_-]{16,}"), "<redacted>"),
+    (re.compile(r"\bAIza[0-9A-Za-z_-]{30,}"), "<redacted>"),
 ]
 _USER_IN_PATH = re.compile(r"(?i)([\\/](?:users|home)[\\/])[^\\/\s'\"]+")
 
@@ -58,7 +62,14 @@ def _secrets() -> list[str]:
         token = config.settings.api_token
     except Exception:  # noqa: BLE001 — no settings, nothing extra to hide
         token = None
-    return [token] if token else []
+    found = [token] if token else []
+    try:
+        from rockforge.infrastructure import ai_assistant
+
+        found += [k for k in ai_assistant.stored_keys() if len(k) >= 8]
+    except Exception:  # noqa: BLE001 — a log line must never fail on this
+        pass
+    return found
 
 
 def redact(text: str) -> str:

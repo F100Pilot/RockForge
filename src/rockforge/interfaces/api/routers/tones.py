@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from rockforge import i18n
@@ -56,6 +57,8 @@ def detect_tones_endpoint(job_id: str) -> JobOut:
 @router.get("/jobs/{job_id}/detected-tones", response_model=DetectTonesOut)
 def get_detected_tones(job_id: str) -> DetectTonesOut:
     """Current tone-detection status and suggested presets."""
+    from rockforge.infrastructure import guitar_profile
+
     with api._session_factory() as session:
         job = api._job_or_404(session, job_id)
         params = job.params or {}
@@ -67,13 +70,22 @@ def get_detected_tones(job_id: str) -> DetectTonesOut:
         bass_char = bass_character(
             float(flatness) if isinstance(flatness, (int, float)) else None
         )
+        # The guitar presets set for the player's guitar (guitar_profile), said on
+        # each one that changed; what is stored stays the preset itself.
+        profile = guitar_profile.load()
+
+        def fit(tone: object) -> dict[str, Any]:
+            return guitar_profile.fit_tones([tone], profile)[0] if isinstance(tone, dict) else {}
+
         return DetectTonesOut(
             status=status,
             category=str(detected.get("category", "")),
-            lead=dict(detected.get("lead", {})),
-            rhythm=dict(detected.get("rhythm", {})),
-            lead_candidates=list(detected.get("lead_candidates", [])),
-            rhythm_candidates=list(detected.get("rhythm_candidates", [])),
+            lead=fit(detected.get("lead", {})),
+            rhythm=fit(detected.get("rhythm", {})),
+            lead_candidates=guitar_profile.fit_tones(
+                list(detected.get("lead_candidates", [])), profile),
+            rhythm_candidates=guitar_profile.fit_tones(
+                list(detected.get("rhythm_candidates", [])), profile),
             # Always the presets as they are now, in the order the stored bass
             # reading gives (a detection from before has none: clean first).
             bass_candidates=(
@@ -154,6 +166,9 @@ def get_tone_suggestions(job_id: str) -> ToneSuggestionsOut:
         ))
     charts.sort(key=lambda c: api._build_order(c.kind))
     plans = plan_tones(windows, pad_s, song, charts)
+    from rockforge.infrastructure import guitar_profile
+
+    profile = guitar_profile.load()
     return ToneSuggestionsOut(
         tracks=[
             TrackTonePlanOut(
@@ -170,7 +185,7 @@ def get_tone_suggestions(job_id: str) -> ToneSuggestionsOut:
                 ],
                 base=p.base, names=p.names,
                 changes=[ToneChangeIn(time=t, name=k) for t, k in p.changes],
-                tones=p.tones,
+                tones=guitar_profile.fit_tones(list(p.tones), profile),
             )
             for p in plans
         ],
@@ -248,7 +263,17 @@ def get_tone_plan_prompt(job_id: str) -> dict[str, str]:
     format and the game's gear. See ``infrastructure/tone_plan.py``."""
     from rockforge.infrastructure.tone_plan import build_prompt
 
-    return {"prompt": build_prompt(_tone_plan_context(job_id))}
+    return {"prompt": _plan_prompt(_tone_plan_context(job_id), build_prompt)}
+
+
+def _plan_prompt(ctx: Any, build: Any) -> str:
+    """The song's request with what the player plays (``guitar_profile``)."""
+    from rockforge.infrastructure import guitar_profile
+
+    bass = any(c.bass for c in ctx.charts)
+    guitar = any(not c.bass for c in ctx.charts)
+    return str(build(ctx, guitar_profile.describe(guitar_profile.load(), guitar=guitar,
+                                                  bass=bass)))
 
 
 @router.post("/jobs/{job_id}/tone-plan/preview", response_model=TonePlanOut)
@@ -263,6 +288,33 @@ def preview_tone_plan(job_id: str, body: TonePlanIn) -> TonePlanOut:
         res = read_plan(body.text, ctx)
     except TonePlanError as exc:
         raise HTTPException(422, str(exc)) from exc
+    return _plan_out(res, ctx)
+
+
+@router.post("/jobs/{job_id}/tone-plan/ask", response_model=TonePlanOut)
+def ask_tone_plan(job_id: str) -> Any:
+    """The song's request asked of the AI chosen in Definições, its answer read
+    like a pasted one. An answer that is not a plan comes back as a 422 that
+    carries the answer, so the page shows what the AI said."""
+    from rockforge.infrastructure import ai_assistant
+    from rockforge.infrastructure.tone_plan import TonePlanError, build_prompt, read_plan
+
+    ctx = _tone_plan_context(job_id)
+    try:
+        answer = ai_assistant.ask(_plan_prompt(ctx, build_prompt))
+    except ai_assistant.AiError as exc:
+        raise HTTPException(exc.status, str(exc)) from exc
+    try:
+        res = read_plan(answer.text, ctx)
+    except TonePlanError as exc:
+        return JSONResponse(status_code=422, content={
+            "detail": str(exc), "answer": answer.text, "model": answer.model})
+    out = _plan_out(res, ctx)
+    out.answer, out.model = answer.text, answer.model
+    return out
+
+
+def _plan_out(res: Any, ctx: Any) -> TonePlanOut:
     return TonePlanOut(
         tones=res.tones,
         tracks=[

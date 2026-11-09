@@ -632,7 +632,8 @@ class TonePlanTrackOut(BaseModel):
 class TonePlanOut(BaseModel):
     """What a pasted plan becomes — nothing is stored until the UI applies it.
     ``tracks`` lists only the charts it mentions; times are the build's clock,
-    ``pad_s`` earlier in the recording."""
+    ``pad_s`` earlier in the recording. Asked of an AI directly, ``answer`` is
+    its text (shown in the paste box) and ``model`` the model that answered."""
 
     tones: list[dict[str, Any]]
     tracks: list[TonePlanTrackOut]
@@ -640,6 +641,78 @@ class TonePlanOut(BaseModel):
     notes: dict[str, str] = {}
     sources: list[str] = []
     pad_s: float = 0.0
+    answer: str = ""
+    model: str = ""
+
+
+class InstrumentProfileIn(BaseModel):
+    pickups: str = Field(default="", max_length=20)
+    output: str = Field(default="", max_length=20)
+    name: str = Field(default="", max_length=200)
+
+
+class GuitarProfileIn(BaseModel):
+    """What the player plays (infrastructure/guitar_profile.py); an unknown
+    value reads as not said."""
+
+    guitar: InstrumentProfileIn = InstrumentProfileIn()
+    bass: InstrumentProfileIn = InstrumentProfileIn()
+
+
+AiProvider = Literal["openrouter", "gemini", "ollama"]
+
+
+class AiAssistantIn(BaseModel):
+    """One change to the AI assistant's settings; a field left out stays."""
+
+    provider: Literal["openrouter", "gemini", "ollama", ""] | None = None
+    model_provider: AiProvider | None = None
+    model: str | None = Field(default=None, max_length=200)
+    key_provider: Literal["openrouter", "gemini"] | None = None
+    key: str | None = Field(default=None, max_length=400)
+    forget_key: Literal["openrouter", "gemini"] | None = None
+    ollama_url: str | None = Field(default=None, max_length=200)
+
+
+class AiAssistantOut(BaseModel):
+    """The choice and whether each key is stored — never a key."""
+
+    provider: str
+    models: dict[str, str]
+    has_key: dict[str, bool]
+    ollama_url: str
+    ready: bool
+
+
+class AiModelOut(BaseModel):
+    id: str
+    name: str
+    free: bool | None = None
+    prompt_price: float | None = None
+    completion_price: float | None = None
+    context: int | None = None
+
+
+class ToneDescribeIn(BaseModel):
+    """A few words for the sound of ONE tone ("AC/DC crunch")."""
+
+    description: str = Field(min_length=1, max_length=500)
+    bass: bool = False
+
+
+class ToneTextIn(BaseModel):
+    text: str = Field(max_length=200_000)
+
+
+class ToneTextOut(BaseModel):
+    """The tones an answer holds (read like the song's plan), nothing stored."""
+
+    tones: list[dict[str, Any]]
+    warnings: list[str] = []
+    notes: dict[str, str] = {}
+    sources: list[str] = []
+    answer: str = ""
+    model: str = ""
 
 
 class StemsOut(BaseModel):

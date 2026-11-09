@@ -6,6 +6,14 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novidades
+
+- **A tua guitarra e o teu baixo:** em Definições → **Tons e IA** dizes que captadores tens, a força deles e o nome do instrumento. Os tons com distorção que a deteção e as sugestões propõem passam a vir ajustados para eles (captadores fortes ou ativos com menos ganho e o noise gate um pouco mais fechado; single coils e P90 com o noise gate mais fechado por causa do ruído; uma guitarra fraca com um pouco mais de ganho), com uma marca que diz o que mudou. É uma regra prática, não uma medição: confere de ouvido.
+
+- **Descrever o som:** no editor de tons, escreves em poucas palavras o som que queres ("crunch dos AC/DC") e o RockForge faz um tom com o equipamento do jogo. Funciona com um assistente ligado (abaixo) ou copiando o pedido para o ChatGPT e colando a resposta.
+
+- **Perguntar à IA sem copiar e colar:** em Definições → Tons e IA ligas um assistente — **OpenRouter** (entras com a tua conta; há modelos grátis), **Google Gemini** (a tua chave) ou **Ollama** (um modelo no teu computador, sem internet). Depois, **Perguntar à IA** em "Importar tons de um texto" e em "Descrever o som" envia o pedido e lê a resposta. Antes de um modelo pago diz quanto deve custar e pergunta. A chave fica só no teu computador e nada é pedido até carregares no botão.
+
 ### Correções
 
 - **Um tab do Songsterr já não fica no andamento do baixo:** às vezes só a pista do baixo chegava a descarregar e a música inteira ficava com o andamento dele, que no Songsterr muda quase a cada compasso; o resto da música desacertava da gravação. Agora cada pista é pedida pelo número com que o Songsterr a guarda, e nos dois sítios onde pode estar, por isso chegam todas. As repetições com finais diferentes (1.ª e 2.ª vez) também passam a ser lidas: cada final toca na sua passagem. (GitHub #26)

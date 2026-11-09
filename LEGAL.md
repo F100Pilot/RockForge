@@ -93,6 +93,13 @@ serviço aplicam-se a quem faz o pedido.
     as encontrares.
   - Servem para o teu projeto, não para redistribuir.
 
+- **OpenRouter, Google Gemini e Ollama** («Perguntar à IA», Definições → Tons e
+  IA). São da tua escolha e usados com a tua conta ou a tua chave, que fica só
+  no teu computador e só é enviada a esse fornecedor. O pedido leva a música,
+  as pistas, as secções e o que disseste da tua guitarra. Os termos, os custos
+  e os limites são entre ti e o fornecedor. O que a IA responde é a opinião
+  dela, não uma medição.
+
 ### Sem garantia
 
 O RockForge é fornecido "tal como está", sem garantia de qualquer tipo (ver
@@ -183,6 +190,13 @@ whoever makes the request.
   - Lyrics are still protected works.
   - Covers belong to their rights holders, wherever you find them.
   - They are for your project, not for redistribution.
+
+- **OpenRouter, Google Gemini and Ollama** ("Ask the AI", Settings → Tones and
+  AI). They are your choice and used with your account or your key, which stays
+  on your computer only and is only sent to that provider. The request carries
+  the song, the tracks, the sections and what you said about your guitar. Terms,
+  costs and limits are between you and the provider. What the AI answers is its
+  opinion, not a measurement.
 
 ### No warranty
 

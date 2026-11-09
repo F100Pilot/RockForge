@@ -1,3 +1,20 @@
+# Tons: perfil da guitarra, um tom por descrição, perguntar à IA (2026-11-09)
+
+Pedido: "Avança com o 1, 2 e 3", depois de analisar o ToneCrafter (só o que faz; o código e os
+prompts dele não podem ser copiados, e não foram lidos).
+
+- [x] 1. Perfil da guitarra (e do baixo): captadores, força, nome. `work_dir/guitar_profile.json`
+      (próprio ficheiro, como o contador). Entra nos pedidos (plano da música e tom único) e
+      ajusta os presets entregues pela deteção/sugestões (ganho e noise gate), dito no cartão.
+- [x] 2. "Descrever o som": um só tom a partir de uma frase, no editor de tons — pedido para
+      copiar, resposta colada, lida pelo mesmo leitor de tons do plano (`read_tones`).
+- [x] 3. Perguntar à IA sem copiar/colar: OpenRouter (entrar sem chave, PKCE, ou chave),
+      Gemini (chave), Ollama (local). Chaves só neste PC (`work_dir/ai_assistant.json`, nunca
+      devolvidas, tiradas dos registos). Preço à vista e confirmação para modelos pagos. Usado
+      no "Importar tons de um texto" e no "Descrever o som".
+- [x] Testes (fakes de rede), i18n PT/EN, guias, changelog, CLAUDE.md, avisos de terceiros,
+      Playwright PT 1440 / EN 760.
+
 # Faixa de ataques marcados à mão (Liam, 2026-10-20)
 
 Pedido: marcar a palhetada certa a ouvir (tecla) e encaixar as notas nesses toques ao editar.
