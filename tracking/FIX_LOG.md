@@ -414,7 +414,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0406](#fix-0406) | BUG-0407 | 0.12.0-beta.7 | passed | pending |
 | [FIX-0407](#fix-0407) | BUG-0408 | 0.12.0-beta.7 | passed | pending |
 | [FIX-0408](#fix-0408) | BUG-0409 | 0.12.0-beta.7 | passed | pending |
-| [FIX-0409](#fix-0409) | BUG-0410 | unreleased | passed | pending |
+| [FIX-0409](#fix-0409) | BUG-0410 | 0.12.0-beta.9 | passed | pending |
 
 ## FIX-0001
 
@@ -8996,7 +8996,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-08 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.9 |
 | Commits | fb7e13e |
 | Components | import |
 | Tests | tests/test_songsterr.py::test_a_part_is_fetched_by_its_part_id_on_both_distributions; tests/test_songsterr_gp.py::test_a_repeat_with_alternate_endings_plays_each_ending_on_its_pass |

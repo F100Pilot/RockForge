@@ -10293,7 +10293,7 @@
       "commits": [
         "fb7e13e"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.9",
       "tests": [
         "tests/test_songsterr.py::test_a_part_is_fetched_by_its_part_id_on_both_distributions",
         "tests/test_songsterr_gp.py::test_a_repeat_with_alternate_endings_plays_each_ending_on_its_pass"

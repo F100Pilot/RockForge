@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.12.0 beta 9] — 2026-11-09
+
 ### Novidades
 
 - **A tua guitarra e o teu baixo:** em Definições → **Tons e IA** dizes que captadores tens, a força deles e o nome do instrumento. Os tons com distorção que a deteção e as sugestões propõem passam a vir ajustados para eles (captadores fortes ou ativos com menos ganho e o noise gate um pouco mais fechado; single coils e P90 com o noise gate mais fechado por causa do ruído; uma guitarra fraca com um pouco mais de ganho), com uma marca que diz o que mudou. É uma regra prática, não uma medição: confere de ouvido.

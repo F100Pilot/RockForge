@@ -2802,7 +2802,7 @@ A Songsterr tab's tempo map is read from its longest part. When only the bass pa
 
 **Root cause:** fetch_tab asked for a part by the track's index on the CloudFront family the image suffix pointed at, never by the meta's partId and never on the other family, so parts stored elsewhere were reported missing.
 
-**Fixes:** [FIX-0409](../FIX_LOG.md#fix-0409) (unreleased)
+**Fixes:** [FIX-0409](../FIX_LOG.md#fix-0409) (0.12.0-beta.9)
 
 **Verified:** _pending_ (by _pending_)
 

@@ -4,6 +4,35 @@
 
 Every version, newest first. What a version fixed and the bugs it still carried come from the bug and fix registers. Process: [docs/RELEASE_PROCESS.md](../docs/RELEASE_PROCESS.md).
 
+## 0.12.0-beta.9
+
+| | |
+|---|---|
+| Status | Beta |
+| Created | 2026-11-09 |
+| Published | _pending_ |
+| Commit | _pending_ |
+| Build | GitHub Actions release workflow |
+| Artifacts | — |
+| Tests | CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow |
+| Approved by | the maintainer (asked for the release) |
+
+**Goal:** The player's guitar in the tones, one tone from a description, asking an AI directly; Songsterr parts all downloaded (GitHub #26).
+
+**New:**
+
+- Your guitar and your bass
+- Describe the sound
+- Ask the AI without copying and pasting
+
+**Bugs fixed:** 
+
+- [BUG-0410](bugs/import.md#bug-0410) A Songsterr tab played at the bass's tempo because the other parts did not download
+
+**Known bugs it carried:** —
+
+**Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
+
 ## 0.12.0-beta.8
 
 | | |

@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.12.0 beta 9] — 2026-11-09
+
 ### New
 
 - **Your guitar and your bass:** in Settings → **Tones and AI** you say which pickups you have, how strong they are and the instrument's name. The driven tones the detection and the suggestions propose now come fitted to them (hot or active pickups with less gain and the noise gate a little more closed; single coils and P90s with the noise gate more closed because of their hum; a weak guitar with a little more gain), with a mark that says what changed. It is a rule of thumb, not a measurement: check by ear.

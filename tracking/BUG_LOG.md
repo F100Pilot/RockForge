@@ -419,4 +419,4 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0407](bugs/import.md#bug-0407) | Palm mutes from a Songsterr tab were lost | import | Medium | P2 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
 | [BUG-0408](bugs/import.md#bug-0408) | A Songsterr tab took the tempo map of its first charted part | import | Medium | P2 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
 | [BUG-0409](bugs/import.md#bug-0409) | A Songsterr tab's capo was ignored | import | Medium | P2 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
-| [BUG-0410](bugs/import.md#bug-0410) | A Songsterr tab played at the bass's tempo because the other parts did not download | import | High | P2 | Fixed | 0.12.0-beta.8 | — |
+| [BUG-0410](bugs/import.md#bug-0410) | A Songsterr tab played at the bass's tempo because the other parts did not download | import | High | P2 | Fixed | 0.12.0-beta.8 | 0.12.0-beta.9 |
