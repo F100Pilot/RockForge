@@ -215,6 +215,15 @@ class NoteOverride:
 # twin beside it. Two notes on one string are never this close.
 NOTE_OVERRIDE_MATCH_S = 0.005
 
+# Techniques the built XML has no attribute for, so the viewer never sees them
+# on a note and no edit can say whether to keep them: an edit that hits a note
+# keeps these from the note itself. Let ring is what marks an arpeggio
+# (``arpeggio_spans``) — changing one fret of one cut its arpeggio (BUG-0413).
+# Every other technique travels through ``/arrangements`` and back with the
+# edit; ``test_every_technique_reaches_the_note_editor_or_is_kept_by_the_build``
+# holds the two lists together.
+TECHNIQUES_KEPT_BY_AN_EDIT = frozenset({Technique.LET_RING})
+
 
 def _with_bend(ov: NoteOverride) -> frozenset[Technique]:
     """An edit's techniques with BEND exactly when it bends (GitHub issue #21):
@@ -272,7 +281,8 @@ def _apply_note_overrides(
         old = merged[hit]
         merged[hit] = replace(
             old, string=ov.string, fret=ov.fret, sustain=ov.sustain,
-            techniques=_with_bend(ov), bend_semitones=ov.bend_semitones,
+            techniques=_with_bend(ov) | (old.techniques & TECHNIQUES_KEPT_BY_AN_EDIT),
+            bend_semitones=ov.bend_semitones,
             slide_to_fret=ov.slide_to_fret,
             # what described the old pitch or bend no longer does
             bend_points=(

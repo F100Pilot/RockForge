@@ -12,7 +12,7 @@ from pydantic import ValidationError
 from rockforge.domain.chords import name_chord
 from rockforge.domain.music import BASS_STANDARD_MIDI, STANDARD_E_MIDI
 from rockforge.infrastructure.db.models import Job, JobStatus
-from rockforge.infrastructure.rsxml.reader import section_elements
+from rockforge.infrastructure.rsxml.reader import note_flags, section_elements
 from rockforge.interfaces.api import app as api
 from rockforge.interfaces.api.schemas import (
     ArpeggioOut,
@@ -181,15 +181,11 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
         open_midi = BASS_STANDARD_MIDI if is_bass else STANDARD_E_MIDI
 
         def parse_note(el: ET.Element, chord: bool) -> ArrangementNoteOut:
-            # "mute" is a dead note (the X): left out, the score drew it as a
-            # note to be played while the game plays the string muted.
-            techs = [
-                t for t in (
-                    "hammerOn", "pullOff", "harmonic", "palmMute", "mute", "vibrato",
-                    "tap", "slap", "pluck", "accent",
-                )
-                if el.get(t) == "1"
-            ]
+            # Every flag the XML carries, as the reader reads them: a list of
+            # its own here left out the dead note ("mute") and then tremolo and
+            # pinch harmonic, so the score never showed them and an edit of the
+            # note in the viewer dropped them from the build (BUG-0413).
+            techs = [t.value for t in note_flags(el)]
             bend = el.get("bend", "0")
             try:
                 bend_semitones = int(round(float(bend)))

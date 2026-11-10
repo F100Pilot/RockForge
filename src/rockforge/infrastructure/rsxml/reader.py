@@ -31,7 +31,7 @@ from rockforge.domain.music import (
 
 # The writer's attribute name per technique (see writer._note_attrs). Only the
 # flags a note carries; BEND/SLIDE ride their own numeric attributes below.
-_TECHNIQUE_ATTRS: dict[str, Technique] = {
+TECHNIQUE_ATTRS: dict[str, Technique] = {
     "hammerOn": Technique.HAMMER_ON,
     "pullOff": Technique.PULL_OFF,
     "harmonic": Technique.HARMONIC,
@@ -62,6 +62,13 @@ def _flag(el: ET.Element, name: str) -> bool:
     return el.get(name, "0") not in ("0", "", "false")
 
 
+def note_flags(el: ET.Element) -> list[Technique]:
+    """The technique flags a built note (or chord note) carries, in the
+    writer's order — every one of them, so a reader that forwards a note
+    (``/arrangements``) cannot leave one out and have an edit drop it."""
+    return [t for attr, t in TECHNIQUE_ATTRS.items() if _flag(el, attr)]
+
+
 def _int(el: ET.Element, name: str, default: int = 0) -> int:
     try:
         return int(float(el.get(name, str(default))))
@@ -70,7 +77,7 @@ def _int(el: ET.Element, name: str, default: int = 0) -> int:
 
 
 def _note_from_el(el: ET.Element) -> TabNote:
-    techniques = {t for attr, t in _TECHNIQUE_ATTRS.items() if _flag(el, attr)}
+    techniques = set(note_flags(el))
     bend = float(el.get("bend", "0") or 0)
     if bend:
         techniques.add(Technique.BEND)

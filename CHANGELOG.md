@@ -6,6 +6,10 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Correções
+
+- **Editar uma nota já não lhe tira o tremolo nem o harmónico pinch:** em "Editar notas", mudar só o traste (ou a duração) de uma nota com tremolo picking ou harmónico pinch tirava-lhe essa técnica na reconstrução, porque o editor não as recebia. Agora a nota guarda todas as técnicas que tinha e que a janela de edição não mostra, e a pauta passa a marcá-las (**T.P.** e **P.H.**), tal como a pista 3D. O let ring de um arpejo também fica quando se edita uma das notas.
+
 ## [0.12.0 beta 10] — 2026-11-11
 
 ### Correções

@@ -6,6 +6,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### Fixes
+
+- **Editing a note no longer takes away its tremolo or pinch harmonic:** in "Edit notes", changing only the fret (or the length) of a note with tremolo picking or a pinch harmonic removed that technique on the rebuild, because the editor never received it. A note now keeps every technique it had that the edit window does not show, and the score marks them (**T.P.** and **P.H.**), as the 3D highway does. An arpeggio's let ring also stays when one of its notes is edited.
+
 ## [0.12.0 beta 10] — 2026-11-11
 
 ### Fixes
