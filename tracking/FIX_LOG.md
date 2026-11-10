@@ -415,6 +415,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0407](#fix-0407) | BUG-0408 | 0.12.0-beta.7 | passed | pending |
 | [FIX-0408](#fix-0408) | BUG-0409 | 0.12.0-beta.7 | passed | pending |
 | [FIX-0409](#fix-0409) | BUG-0410 | 0.12.0-beta.9 | passed | pending |
+| [FIX-0410](#fix-0410) | BUG-0411 | unreleased | passed | pending |
 
 ## FIX-0001
 
@@ -9004,3 +9005,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | _pending_ |
 | Regression risk | Low: a part found where it was found before is fetched the same way first; never run against the real Songsterr from here. |
+
+## FIX-0410
+
+**Bugs:** [BUG-0411](bugs/psarc.md#bug-0411)
+
+**Root cause:** The SNG chord mask mirrored every string's technique, and a note's fret-hand mute was written on the chord's FRETHANDMUTE bit instead of MUTE; the viewer never received the mute.
+
+**Solution:** TECHNIQUE_TO_MASK maps FRET_MUTE to NOTE_MASK_MUTE; the chord mask takes FRETHANDMUTE, PALMMUTE and ACCENT only when every string carries the technique (the XML writer's chord attributes), the other techniques staying in the ChordNotes; check_sng flags chord_muted_by_some_strings; the SNG preview reads MUTE; /arrangements passes mute, the score draws a dead note as X with its fret in the tooltip and a legend item, and the note editor has Abafada (X).
+
+| | |
+|---|---|
+| Date | 2026-11-10 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | f1cc921 |
+| Components | psarc; viewer; editor |
+| Tests | tests/test_psarc_sng.py::test_one_dead_string_mutes_that_string_not_the_whole_chord; tests/test_psarc_sng.py::test_fret_mute_slide_unpitch_and_composite_bend_in_sng; tests/test_psarc_verify.py::test_each_rule_catches_the_fault_that_crashed_the_game; tests/test_api.py::test_a_dead_string_in_a_chord_reaches_the_score_as_a_mute |
+| Manual checks | mutation-checked (no bytecode cache): the note bit, any-instead-of-all on the chord, the checker's rule and the /arrangements mute each fail a test; the user's own Lead and Rhythm XMLs rebuilt: 64 and 138 chords with one dead string, none muted whole, check_sng clean; an invented GP5 with a 10 + X chord built for real: /psarc-check clean, the SNG read back with MUTE on the dead string only; the X, its tooltip, the legend and the checkbox with Playwright (PT 1440 / EN 760 px); unticking one and rebuilding left it played |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Medium: a chord's mask no longer carries its strings' hammer-ons, slides, vibrato and the like, as DLC Builder's never does; not seen in game from here. |

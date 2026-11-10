@@ -2914,3 +2914,43 @@ The manifest grouped chords by time rounded to 0.1 ms (a strummed power chord wa
 - 2026-11-04 — Triaged: code review 2026-11-04; FIX-0400 (2538bbc)
 - 2026-11-04 — In Progress: code review 2026-11-04; FIX-0400 (2538bbc)
 - 2026-11-04 — Fixed: code review 2026-11-04; FIX-0400 (2538bbc)
+
+## BUG-0411
+
+**A chord with one dead string was muted whole in the native PSARC, and the score showed the dead string as a fret**
+
+| | |
+|---|---|
+| Detected | 2026-11-10 |
+| Reported by | a user, in a message to the maintainer |
+| Found in | 0.12.0-beta.9 |
+| Build / commit | _pending_ |
+| Severity | High |
+| Priority | P2 |
+| Status | Fixed |
+
+A chord where the Guitar Pro file marks one string as a dead note (X) came out in game as X on every string: the SNG mirrored the string's fret-hand mute onto the whole chord, and wrote a note's mute on the chord's bit. The score drew the dead string as its fret, because /arrangements never passed the mute to the viewer, and the note editor had no dead-note option, so saving an edit dropped it.
+
+**Steps to reproduce:** 
+
+1. import a GP file whose chord has one dead string (a 10 with the next string an X)
+2. build the .psarc and play the chord in game; look at the score
+
+**Expected:** Only the dead string muted in game, as DLC Builder compiles the same XML; the score shows the X.
+
+**Observed:** The user saw the verse's chords as mutes in game while the score showed the notes 10 and 9; the user's XMLs carry 64 (Lead) and 138 (Rhythm) chords with one dead string, all muted whole by the SNG builder.
+
+**Root cause:** sng_build mirrored every note technique onto the chord mask (DLC Builder sets a chord's mask only from the chord's own flags) and TECHNIQUE_TO_MASK mapped FRET_MUTE to FRETHANDMUTE, the chord's bit, where a note's is MUTE; charts.py's technique list left out mute.
+
+**Fixes:** [FIX-0410](../FIX_LOG.md#fix-0410) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-10 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-10 — Open: reported with the bundle's XMLs
+- 2026-11-10 — Triaged: the XMLs mark one string of each verse chord mute=1; the SNG muted the chord whole
+- 2026-11-10 — In Progress: chord mask and note bit as Rocksmith2014.NET XmlToSngNote; mute to the score
+- 2026-11-10 — Fixed: FIX-0410 (f1cc921)

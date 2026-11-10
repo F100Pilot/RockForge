@@ -29,7 +29,9 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 - [BUG-0410](bugs/import.md#bug-0410) A Songsterr tab played at the bass's tempo because the other parts did not download
 
-**Known bugs it carried:** —
+**Known bugs it carried:** 
+
+- [BUG-0411](bugs/psarc.md#bug-0411) A chord with one dead string was muted whole in the native PSARC, and the score showed the dead string as a fret (High, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
