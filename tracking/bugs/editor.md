@@ -503,3 +503,44 @@ The XML reader divided <bendValues> times by the sustain while the writer lays a
 - 2026-11-04 — Triaged: code review 2026-11-04; FIX-0398 (18b74fe)
 - 2026-11-04 — In Progress: code review 2026-11-04; FIX-0398 (18b74fe)
 - 2026-11-04 — Fixed: code review 2026-11-04; FIX-0398 (18b74fe)
+
+## BUG-0412
+
+**Editing a note in the viewer dropped its tremolo, pinch harmonic and let ring**
+
+| | |
+|---|---|
+| Detected | 2026-11-10 |
+| Reported by | the maintainer, in a review request |
+| Found in | 0.12.0-beta.9 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P3 |
+| Status | Fixed |
+
+In "Editar notas", saving an edit of a note sent only the techniques the popup has checkboxes for (plus bend and slide), and /arrangements never sent tremolo or pinch harmonic to the viewer, so editing such a note (only its fret, say) rebuilt it without them. On the backend an edit replaced the note's techniques with the edit's, so let ring, which the XML has no attribute for, went too, cutting the arpeggio it belonged to.
+
+**Steps to reproduce:** 
+
+1. build a GP file with a tremolo-picked note
+2. in Editar notas click that note, change only its fret, Guardar
+3. Aplicar e reconstruir; read the note in the rebuilt XML
+
+**Expected:** The note at the new fret, still tremolo-picked.
+
+**Observed:** The override carried techniques: [] and the rebuilt note had no tremolo attribute (reproduced with Playwright on an invented GP5 with the previous app.js).
+
+**Root cause:** charts.py parse_note listed its own ten techniques instead of every flag the XML carries; the popup's save built techniques from its checkboxes alone; _apply_note_overrides replaced a hit note's techniques with the edit's, losing those the viewer can never see (let ring).
+
+**Fixes:** [FIX-0411](../FIX_LOG.md#fix-0411) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-10 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-10 — Open: reported
+- 2026-11-10 — Triaged: /arrangements leaves tremolo/pinchHarmonic out; the popup and _apply_note_overrides replace techniques
+- 2026-11-10 — In Progress: send every XML flag, keep what the popup does not control, keep let ring on the backend
+- 2026-11-10 — Fixed: FIX-0411 (7b58a86)
