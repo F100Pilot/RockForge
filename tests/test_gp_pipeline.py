@@ -340,6 +340,34 @@ def test_an_edit_keeps_the_note_fields_the_editor_does_not_show() -> None:
             moved.pick_direction) == (9, (), -1, False, 2)
 
 
+def test_an_edit_keeps_the_techniques_the_viewer_never_sees() -> None:
+    """BUG-0412: an edit REPLACES a note's techniques with the ones it sends,
+    and the built XML has no attribute for let ring — so the viewer never saw
+    it and changing one fret of an arpeggio note dropped it (and the arpeggio
+    with it). An edit keeps those; the ones it can see are its to change."""
+    ring = frozenset({Technique.LET_RING, Technique.VIBRATO})
+    note = TabNote(string=2, fret=7, time=1.0, sustain=0.5, techniques=ring)
+    (edited,) = _apply_note_overrides([note], [
+        NoteOverride(time=1.0, string=2, fret=9, sustain=0.5)])
+    assert edited.techniques == frozenset({Technique.LET_RING})
+    (inserted,) = _apply_note_overrides([], [
+        NoteOverride(time=1.0, string=2, fret=9, sustain=0.5)])
+    assert inserted.techniques == frozenset()
+
+
+def test_every_technique_reaches_the_note_editor_or_is_kept_by_the_build() -> None:
+    """The two halves of BUG-0412 held together: every technique either rides
+    the built XML to the viewer (``note_flags``, which ``/arrangements`` sends
+    whole, or bend/slide with fields of their own) or is one the build keeps
+    by itself on an edit — none can fall between and be dropped."""
+    from rockforge.application.gp_pipeline import TECHNIQUES_KEPT_BY_AN_EDIT
+    from rockforge.infrastructure.rsxml.reader import TECHNIQUE_ATTRS
+
+    seen = set(TECHNIQUE_ATTRS.values()) | {Technique.BEND, Technique.SLIDE}
+    assert seen | TECHNIQUES_KEPT_BY_AN_EDIT == set(Technique)
+    assert not seen & TECHNIQUES_KEPT_BY_AN_EDIT
+
+
 def test_a_bend_set_in_the_note_editor_is_a_bend_with_the_shape_given() -> None:
     """GitHub issue #21: the note editor sends the bend's amount, and the
     writer only writes a bend for a note marked BEND — so an edit that set the

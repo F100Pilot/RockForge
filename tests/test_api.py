@@ -816,6 +816,45 @@ def test_arrangements_carry_the_bend_curve_for_the_3d_highway(client: TestClient
     assert notes[2]["bend_curve"] == []
 
 
+def test_arrangements_send_every_technique_a_note_carries(client: TestClient) -> None:
+    """BUG-0412: /arrangements listed its own ten techniques and left tremolo
+    and pinch harmonic out, so the score and the 3D highway never showed them
+    and an edit of such a note in the viewer sent its techniques without them
+    — the rebuild lost them. Every flag the XML carries is sent now."""
+    import rockforge.config as config
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
+    from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
+    from rockforge.infrastructure.db.models import JobStatus
+    from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+    job = _create_job(client)
+    bundle = config.settings.work_dir / job["id"] / "bundle"
+    beats = tuple(Beat(time=0.5 * i, measure=(i // 4 + 1) if i % 4 == 0 else -1) for i in range(8))
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="Tremolo", artist="T", song_length=4.0),
+        tuning=Tuning(),
+        notes=[
+            TabNote(string=3, fret=7, time=1.0, sustain=0.4,
+                    techniques=frozenset({Technique.TREMOLO, Technique.PALM_MUTE})),
+            TabNote(string=1, fret=5, time=2.0, sustain=0.2,
+                    techniques=frozenset({Technique.PINCH_HARMONIC})),
+        ],
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+    )
+    write_arrangement_xml(arr, bundle / "arrangement_lead.xml")
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.status = JobStatus.COMPLETED
+        db_job.bundle_dir = str(bundle)
+        session.commit()
+
+    notes = client.get(f"/jobs/{job['id']}/arrangements").json()[0]["notes"]
+    assert set(notes[0]["techniques"]) == {"tremolo", "palmMute"}
+    assert notes[1]["techniques"] == ["pinchHarmonic"]
+
+
 def test_arrangements_show_linked_notes_and_arpeggios(client: TestClient) -> None:
     """The score marks a note linked into the next and an arpeggio's span."""
     import rockforge.config as config

@@ -3229,7 +3229,9 @@ const TECH_GLYPH = {
   hammerOn: '<path d="M-6,-2 q6,-6 12,0" fill="none" stroke="#fff" stroke-width="1.4"/><text x="0" y="-8" fill="#fff" font-size="8" font-weight="700" text-anchor="middle">h</text>',
   pullOff: '<path d="M-6,-2 q6,-6 12,0" fill="none" stroke="#fff" stroke-width="1.4"/><text x="0" y="-8" fill="#fff" font-size="8" font-weight="700" text-anchor="middle">p</text>',
 };
-const TECH_TEXT = { palmMute: 'P.M.', tap: 'T', slap: 'SL', pluck: 'PO', accent: '›' };
+const TECH_TEXT = {
+  palmMute: 'P.M.', tap: 'T', slap: 'SL', pluck: 'PO', accent: '›', pinchHarmonic: 'P.H.', tremolo: 'T.P.',
+};
 
 function techGlyphs(techs, cx, topY) {
   const slot = 15, n = techs.length;
@@ -5846,7 +5848,15 @@ const TECH_CHECK_IDS = [
   ['nePalmMute', 'palmMute'], ['neDead', 'mute'], ['neVibrato', 'vibrato'], ['neTap', 'tap'],
   ['neSlap', 'slap'], ['nePluck', 'pluck'], ['neAccent', 'accent'],
 ];
-let neContext = null;  // { time, string } of the popup currently open, or null
+// What the popup decides about a note: its checkboxes, and the bend and the
+// slide, which have fields of their own. Any other technique the note has
+// (tremolo, pinch harmonic…) is kept as it is when the note is saved — the
+// popup has no say over it, and saving only a new fret dropped it (BUG-0412).
+const POPUP_TECHNIQUES = new Set([...TECH_CHECK_IDS.map(([, v]) => v), 'bend', 'slide']);
+function techniquesBeyondThePopup(n) {
+  return n ? (n.techniques || []).filter(t => !POPUP_TECHNIQUES.has(t)) : [];
+}
+let neContext = null;  // { time, string, keep } of the popup currently open, or null
 let noteMove = null;   // a note being dragged in "Editar notas": {note, el, startX, startY, moved, target}
 let neLast = null;     // the note last clicked, moved or saved in "Editar notas": {time, string}
 let susDrag = null;    // a tail being dragged in "Editar notas": {note, el, x0, hx0, startX, grid, sustain}
@@ -5912,7 +5922,7 @@ function openNoteEditPopup(chartTime, string, clientX, clientY) {
   const pending = findPendingNoteOverrideAt(chartTime, string);
   const existing = findBuiltNoteAt(chartTime, string);
   const base = pending || existing;
-  neContext = { time: chartTime, string };
+  neContext = { time: chartTime, string, keep: techniquesBeyondThePopup(base) };
   neLast = { time: chartTime, string };
 
   document.getElementById('nePopupTitle').textContent = base ? T('Editar nota') : T('Nova nota');
@@ -6156,7 +6166,8 @@ document.addEventListener('keydown', e => {
     const fret = parseInt(document.getElementById('neFret').value, 10);
     if (isNaN(fret) || fret < 0 || fret > 24) { toast(T('traste inválido (0-24)'), 'err'); return; }
     const sustain = Math.max(0, parseFloat(document.getElementById('neSustain').value) || 0);
-    const techniques = TECH_CHECK_IDS.filter(([id]) => document.getElementById(id).checked).map(([, v]) => v);
+    const techniques = TECH_CHECK_IDS.filter(([id]) => document.getElementById(id).checked).map(([, v]) => v)
+      .concat(neContext.keep || []);
     const bend_semitones = Math.max(0, parseFloat(document.getElementById('neBend').value) || 0);
     // The bend marks the note a bend (the writer writes none otherwise —
     // GitHub issue #21), and its shape becomes the note's curve.

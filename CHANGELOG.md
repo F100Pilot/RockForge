@@ -8,6 +8,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ### Correções
 
+- **Editar uma nota já não lhe tira o tremolo nem o harmónico pinch:** em "Editar notas", mudar só o traste (ou a duração) de uma nota com tremolo picking ou harmónico pinch tirava-lhe essa técnica na reconstrução, porque o editor não as recebia. Agora a nota guarda todas as técnicas que tinha e que a janela de edição não mostra, e a pauta passa a marcá-las (**T.P.** e **P.H.**), tal como a pista 3D. O let ring de um arpejo também fica quando se edita uma das notas.
+
 - **Um acorde com uma corda abafada já não sai todo abafado no jogo:** quando o ficheiro GP marca uma só corda de um acorde como abafada (o X da tablatura), o `.psarc` abafava o acorde inteiro, e no jogo apareciam só X. Agora só essa corda vai abafada. A pauta também mostra essas notas como **X** (antes apareciam como uma nota normal), e a edição de nota tem **Abafada (X)** para a desmarcar. "Verificar PSARC" aponta esta falha nos `.psarc` construídos antes: reconstrói-os.
 
 ## [0.12.0 beta 9] — 2026-11-09
