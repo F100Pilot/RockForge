@@ -741,6 +741,42 @@ def test_arrangements_say_where_a_slide_ends(client: TestClient) -> None:
     assert [(n["fret"], n["slide_to"]) for n in notes] == [(5, 7), (5, -1)]
 
 
+def test_a_dead_string_in_a_chord_reaches_the_score_as_a_mute(client: TestClient) -> None:
+    """A user's verse riff, a 10 + X chord: the score drew the X as a 9 to be
+    played (the mute never left the XML), while the game played it muted."""
+    import rockforge.config as config
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
+    from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
+    from rockforge.infrastructure.db.models import JobStatus
+    from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+    job = _create_job(client)
+    bundle = config.settings.work_dir / job["id"] / "bundle"
+    beats = tuple(Beat(time=0.5 * i, measure=(i // 4 + 1) if i % 4 == 0 else -1) for i in range(8))
+    arr = Arrangement(
+        kind=ArrangementKind.LEAD,
+        metadata=SongMetadata(title="Dead", artist="T", song_length=4.0),
+        tuning=Tuning(),
+        notes=[
+            TabNote(string=0, fret=10, time=1.0, sustain=0.0),
+            TabNote(string=1, fret=9, time=1.0, sustain=0.0,
+                    techniques=frozenset({Technique.FRET_MUTE})),
+        ],
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+    )
+    write_arrangement_xml(arr, bundle / "arrangement_lead.xml")
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.status = JobStatus.COMPLETED
+        db_job.bundle_dir = str(bundle)
+        session.commit()
+
+    notes = client.get(f"/jobs/{job['id']}/arrangements").json()[0]["notes"]
+    assert [(n["string"], n["fret"], n["techniques"]) for n in notes] == [
+        (0, 10, []), (1, 9, ["mute"])]
+
+
 def test_arrangements_carry_the_bend_curve_for_the_3d_highway(client: TestClient) -> None:
     """The 3D highway draws a bend rising along its <bendValues>: the curve comes
     back relative to the note's attack, and a plain bend's single point too."""

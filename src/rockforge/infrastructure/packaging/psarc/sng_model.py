@@ -111,7 +111,10 @@ TECHNIQUE_TO_MASK: dict[Technique, int] = {
     Technique.SLAP: NOTE_MASK_SLAP,
     Technique.POP: NOTE_MASK_PLUCK,
     Technique.ACCENT: NOTE_MASK_ACCENT,
-    Technique.FRET_MUTE: NOTE_MASK_FRETHANDMUTE,
+    # A dead note's own bit is MUTE; FRETHANDMUTE is the CHORD's, set only when
+    # the whole chord is muted (Rocksmith2014.NET XmlToSngNote: a note's
+    # IsFretHandMute -> NoteMask.Mute, a chord's -> NoteMask.FretHandMute).
+    Technique.FRET_MUTE: NOTE_MASK_MUTE,
     Technique.PINCH_HARMONIC: NOTE_MASK_PINCHHARMONIC,
     Technique.TREMOLO: NOTE_MASK_TREMOLO,
 }

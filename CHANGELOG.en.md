@@ -6,6 +6,10 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### Fixes
+
+- **A chord with one muted string no longer comes out fully muted in the game:** when the GP file marks only one string of a chord as dead (the X of tab), the `.psarc` muted the whole chord, and the game showed only X. Now only that string is muted. The score also shows those notes as an **X** (they used to look like an ordinary note), and the note editor has **Dead note (X)** to untick it. "Check PSARC" points out this fault in `.psarc` files built before: rebuild them.
+
 ## [0.12.0 beta 9] — 2026-11-09
 
 ### New

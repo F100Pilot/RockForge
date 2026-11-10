@@ -589,7 +589,11 @@ Fica pendente nas duas pistas até **Aplicar e reconstruir**; Ctrl+Z desfaz.
 ### Editar notas (modo ✏️ Editar notas)
 
 - Clica numa nota: muda corda, traste, sustain, técnicas (hammer-on, pull-off, harmónico, palm
-  mute, vibrato, tapping, slap, pop, acento), bend e slide; **Guardar** ou **Remover nota**.
+  mute, **Abafada (X)**, vibrato, tapping, slap, pop, acento), bend e slide; **Guardar** ou
+  **Remover nota**.
+- **Notas abafadas (X):** uma dead note do ficheiro GP aparece na pauta como **X**, como no Guitar
+  Pro (o traste vê-se ao passar o cursor); no jogo, essa corda toca-se abafada. Se não devia estar
+  abafada, desmarca **Abafada (X)** e reconstrói.
 - **Slides:** em **Slide para** escreve o traste de chegada e escolhe **Slide até ao traste** ou
   **Slide sem altura (para fora)** (um slide de saída, que não chega a uma nota certa). **Dura (s)**
   é quanto tempo demora a deslizar: mais curto do que o sustain, a nota chega ao traste e fica a

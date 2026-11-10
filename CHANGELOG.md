@@ -6,6 +6,10 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Correções
+
+- **Um acorde com uma corda abafada já não sai todo abafado no jogo:** quando o ficheiro GP marca uma só corda de um acorde como abafada (o X da tablatura), o `.psarc` abafava o acorde inteiro, e no jogo apareciam só X. Agora só essa corda vai abafada. A pauta também mostra essas notas como **X** (antes apareciam como uma nota normal), e a edição de nota tem **Abafada (X)** para a desmarcar. "Verificar PSARC" aponta esta falha nos `.psarc` construídos antes: reconstrói-os.
+
 ## [0.12.0 beta 9] — 2026-11-09
 
 ### Novidades

@@ -181,9 +181,11 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
         open_midi = BASS_STANDARD_MIDI if is_bass else STANDARD_E_MIDI
 
         def parse_note(el: ET.Element, chord: bool) -> ArrangementNoteOut:
+            # "mute" is a dead note (the X): left out, the score drew it as a
+            # note to be played while the game plays the string muted.
             techs = [
                 t for t in (
-                    "hammerOn", "pullOff", "harmonic", "palmMute", "vibrato",
+                    "hammerOn", "pullOff", "harmonic", "palmMute", "mute", "vibrato",
                     "tap", "slap", "pluck", "accent",
                 )
                 if el.get(t) == "1"

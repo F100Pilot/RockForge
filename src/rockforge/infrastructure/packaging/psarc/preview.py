@@ -31,7 +31,8 @@ SUFFIX_KIND = {
 _TECHNIQUES = (
     (m.NOTE_MASK_HAMMERON, "hammerOn"), (m.NOTE_MASK_PULLOFF, "pullOff"),
     (m.NOTE_MASK_HARMONIC, "harmonic"), (m.NOTE_MASK_PINCHHARMONIC, "pinchHarmonic"),
-    (m.NOTE_MASK_PALMMUTE, "palmMute"), (m.NOTE_MASK_FRETHANDMUTE, "mute"),
+    (m.NOTE_MASK_PALMMUTE, "palmMute"), (m.NOTE_MASK_MUTE, "mute"),
+    (m.NOTE_MASK_FRETHANDMUTE, "mute"),
     (m.NOTE_MASK_VIBRATO, "vibrato"), (m.NOTE_MASK_TREMOLO, "tremolo"),
     (m.NOTE_MASK_TAP, "tap"), (m.NOTE_MASK_SLAP, "slap"), (m.NOTE_MASK_PLUCK, "pluck"),
     (m.NOTE_MASK_ACCENT, "accent"), (m.NOTE_MASK_BEND, "bend"), (m.NOTE_MASK_SLIDE, "slide"),

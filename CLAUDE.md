@@ -5285,6 +5285,34 @@ control), a chord with no ChordNotes never carries PARENT/SLIDE (DLC Builder's
 the user's two GP files rebuild with no chord and a clean check. Not played in
 game from here.
 
+**A dead string mutes that string, never the whole chord** (2026-11-10, a user's
+verse riff: a 10 on the low string with the next string an X, "show up as mutes
+but in the editor are the correct notes"). Read off Rocksmith2014.NET
+(XmlToSngNote.createMaskForChordNote/createMaskForNote/createMaskForChord, SngToXml):
+a note's or chord note's fret-hand mute is `NOTE_MASK_MUTE` (0x20000), and
+`NOTE_MASK_FRETHANDMUTE` (0x8) is a CHORD's own flag only; a chord's mask carries
+only the chord's flags (accent, fret-hand mute, high density, ignore, link, palm
+mute), never its strings' techniques. We wrote 0x8 on notes and MIRRORED every
+string's technique onto the chord, so one X made the game draw the whole chord as
+X. Now `TECHNIQUE_TO_MASK[FRET_MUTE]` is MUTE and the chord mask takes
+FRETHANDMUTE/PALMMUTE/ACCENT only when every string carries it (the XML writer's
+chord attributes, unchanged); the other techniques stay in the ChordNotes, as in
+the reference. `check_sng` flags `chord_muted_by_some_strings` (a chord's mute or
+palm mute with a played string not carrying one), so "Verificar PSARC" shows the
+fault in files built before. The other half: `/arrangements` never passed `mute`
+to the viewer, so the score drew the X as its fret; it now does, the score draws a
+dead note as **X** (fret in the tooltip, legend item), and the note editor has
+**Abafada (X)** (`neDead`) — without it, saving an edit silently dropped the X.
+Guarded by `test_one_dead_string_mutes_that_string_not_the_whole_chord`, the
+planted fault in `test_psarc_verify.py`, the mute line of
+`test_fret_mute_slide_unpitch_and_composite_bend_in_sng` and
+`test_a_dead_string_in_a_chord_reaches_the_score_as_a_mute` (each
+mutation-checked); the user's own XMLs rebuilt: 64 + 138 chords with one dead
+string, none muted whole, `check_sng` clean; an invented GP5 built for real
+(`/psarc-check` clean, the SNG read back), the X, its tooltip, the legend and the
+checkbox with Playwright (PT 1440 / EN 760 px), unticking one and rebuilding left
+it played and the other 15 muted. **Not seen in game from here.**
+
 **Repeated chords are marked HIGH DENSITY (condensed rendering).** A fast
 repeated identical chord — an 8th-note power-chord chug, say — must carry
 `NOTE_MASK_HIGHDENSITY` on every hit AFTER the first, so the game draws it

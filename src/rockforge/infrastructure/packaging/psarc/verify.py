@@ -30,6 +30,9 @@ from rockforge.infrastructure.packaging.psarc.sng import (
     CHORD_MASK_ARPEGGIO,
     NOTE_MASK_ARPEGGIO,
     NOTE_MASK_CHILD,
+    NOTE_MASK_FRETHANDMUTE,
+    NOTE_MASK_MUTE,
+    NOTE_MASK_PALMMUTE,
     NOTE_MASK_PARENT,
     NOTE_MASK_SLIDE,
     SngArrangementLevel,
@@ -184,6 +187,9 @@ def _check_level(lv: SngArrangementLevel, model: SngModel, bounds: list[float]) 
         if n.chord_id >= 0 and n.chord_notes_id < 0 and linked:
             # what crashed the game in GitHub issue #11
             add("chord_link_without_chord_notes", t)
+        if (0 <= n.chord_id < len(model.chord_templates)
+                and n.chord_notes_id < len(model.chord_notes)):
+            _check_chord_mutes(model, n, add)
         # -1 = unused, 1 = the note is tapped/slapped/popped (sng_build), never 0
         if any(v not in (-1, 1) for v in (n.tap, n.slap, n.pluck)):
             add("note_unused_byte", t)
@@ -369,6 +375,26 @@ def verify_psarc(
     return report
 
 
+# A chord's own mute / palm mute holds every string it plays: DLC Builder sets
+# it only from the chord, and a mute that was really one string's muted the
+# whole chord in game (a 10 + X shape played as two X).
+_CHORD_WIDE_MUTES = (
+    (NOTE_MASK_FRETHANDMUTE, NOTE_MASK_MUTE | NOTE_MASK_FRETHANDMUTE),
+    (NOTE_MASK_PALMMUTE, NOTE_MASK_PALMMUTE),
+)
+
+
+def _check_chord_mutes(model: SngModel, n: SngNote, add: Callable[..., None]) -> None:
+    tpl = model.chord_templates[n.chord_id]
+    cn = model.chord_notes[n.chord_notes_id] if n.chord_notes_id >= 0 else None
+    played = [s for s, f in enumerate(tpl.frets) if _s8(f) >= 0]
+    for chord_bit, string_bits in _CHORD_WIDE_MUTES:
+        if n.mask & chord_bit and (
+                cn is None or any(not cn.note_mask[s] & string_bits for s in played)):
+            add("chord_muted_by_some_strings", n.time, tpl.name)
+            return
+
+
 def describe(code: str) -> str:
     """What a rule means, in the user's language."""
     texts: dict[str, tuple[str, str]] = {
@@ -418,6 +444,9 @@ def describe(code: str) -> str:
         "chord_link_without_chord_notes": (
             "acorde com ligação ou slide mas sem notas de acorde (o jogo fecha ao tocá-lo)",
             "a chord with a link or slide but no chord notes (the game crashes when it plays)"),
+        "chord_muted_by_some_strings": (
+            "acorde todo abafado quando só algumas cordas o são (no jogo sai como X em todas)",
+            "a whole chord muted when only some of its strings are (the game shows X on all)"),
         "note_unused_byte": ("nota com tap/slap/pluck que não é -1 nem 1",
                              "a note with tap/slap/pluck other than -1 or 1"),
         "note_without_anchor": ("nota sem âncora", "a note with no anchor"),

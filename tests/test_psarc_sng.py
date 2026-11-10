@@ -14,7 +14,9 @@ from rockforge.infrastructure.packaging.psarc.sng import (
     NOTE_MASK_FRETHANDMUTE,
     NOTE_MASK_HAMMERON,
     NOTE_MASK_HIGHDENSITY,
+    NOTE_MASK_MUTE,
     NOTE_MASK_OPEN,
+    NOTE_MASK_PALMMUTE,
     NOTE_MASK_PINCHHARMONIC,
     NOTE_MASK_SINGLE,
     NOTE_MASK_SLIDEUNPITCHEDTO,
@@ -1025,7 +1027,9 @@ def test_fret_mute_slide_unpitch_and_composite_bend_in_sng() -> None:
     )
     top = from_arrangement(arr).arrangements[-1]
     mute = next(n for n in top.notes if n.string == 0)
-    assert mute.mask & NOTE_MASK_FRETHANDMUTE
+    # A dead note carries MUTE, DLC Builder's bit for a note (XmlToSngNote);
+    # FRETHANDMUTE is a chord's.
+    assert mute.mask & NOTE_MASK_MUTE and not mute.mask & NOTE_MASK_FRETHANDMUTE
     slide = next(n for n in top.notes if n.string == 1)
     assert slide.slide_unpitch_to == 4 and slide.mask & NOTE_MASK_SLIDEUNPITCHEDTO
     bend = next(n for n in top.notes if n.string == 2)
@@ -1981,3 +1985,38 @@ def test_note_bytes_that_a_note_does_not_use_are_minus_one() -> None:
     chords = [n for n in notes if n.chord_id >= 0]
     assert chords and all((n.left_hand, n.pick_direction) == (-1, -1) for n in chords)
     assert all(n.pick_direction == 0 for n in notes if n.chord_id < 0)
+
+
+def test_one_dead_string_mutes_that_string_not_the_whole_chord() -> None:
+    """A user's verse riff: a 10 on the low string with the next string dead
+    (X). Mirroring the dead string's mute onto the chord made the game show the
+    whole chord as X; DLC Builder sets a chord's mute only from the chord, and
+    the XML writer sets the chord's only when every string is muted."""
+    beats = tuple(Beat(time=i * 0.5, measure=1 if i % 4 == 0 else -1) for i in range(20))
+    dead = frozenset({Technique.FRET_MUTE})
+    palm = frozenset({Technique.PALM_MUTE})
+    arr = Arrangement(
+        kind=ArrangementKind.RHYTHM,
+        metadata=SongMetadata(title="S", artist="A", song_length=10.0),
+        tuning=Tuning(),
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+        notes=[
+            TabNote(string=0, fret=10, time=1.0, sustain=0.0),                       # 10 + X
+            TabNote(string=1, fret=9, time=1.0, sustain=0.0, techniques=dead),
+            TabNote(string=0, fret=10, time=2.0, sustain=0.0, techniques=dead),      # all dead
+            TabNote(string=1, fret=10, time=2.0, sustain=0.0, techniques=dead),
+            TabNote(string=0, fret=10, time=3.0, sustain=0.0, techniques=palm),  # one palm muted
+            TabNote(string=1, fret=10, time=3.0, sustain=0.0),
+            TabNote(string=0, fret=10, time=4.0, sustain=0.0, techniques=palm),  # all palm muted
+            TabNote(string=1, fret=10, time=4.0, sustain=0.0, techniques=palm),
+        ],
+    )
+    model = from_arrangement(arr)
+    chords = {n.time: n for n in model.arrangements[-1].notes if n.chord_id >= 0}
+    part = chords[1.0]
+    assert not part.mask & NOTE_MASK_FRETHANDMUTE
+    cn = model.chord_notes[part.chord_notes_id].note_mask
+    assert cn[1] & NOTE_MASK_MUTE and not cn[0] & NOTE_MASK_MUTE
+    assert chords[2.0].mask & NOTE_MASK_FRETHANDMUTE
+    assert not chords[3.0].mask & NOTE_MASK_PALMMUTE
+    assert chords[4.0].mask & NOTE_MASK_PALMMUTE

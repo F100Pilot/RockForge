@@ -27,14 +27,17 @@ from rockforge.infrastructure.packaging.psarc.sng_model import (
     _NOTES_PER_DD_LEVEL,
     CHORD_MASK_ARPEGGIO,
     NO_CAPO,
+    NOTE_MASK_ACCENT,
     NOTE_MASK_ARPEGGIO,
     NOTE_MASK_BEND,
     NOTE_MASK_CHILD,
     NOTE_MASK_CHORD,
     NOTE_MASK_CHORDNOTES,
     NOTE_MASK_DOUBLESTOP,
+    NOTE_MASK_FRETHANDMUTE,
     NOTE_MASK_HIGHDENSITY,
     NOTE_MASK_OPEN,
+    NOTE_MASK_PALMMUTE,
     NOTE_MASK_PARENT,
     NOTE_MASK_SINGLE,
     NOTE_MASK_SLIDE,
@@ -1188,10 +1191,16 @@ def _build_sng_notes(
             mask |= NOTE_MASK_DOUBLESTOP
         if cn_id >= 0:
             mask |= NOTE_MASK_CHORDNOTES
-        # Mirror techniques from individual notes onto chord mask
-        for n in g:
-            for tech in n.techniques:
-                mask |= TECHNIQUE_TO_MASK.get(tech, 0)
+        # Only the CHORD's own flags, as DLC Builder's createMaskForChord: a mute,
+        # palm mute or accent when every string of it carries one (the XML
+        # writer's chord attributes). A technique on some strings lives in the
+        # chord's notes; mirrored onto the chord, one dead string muted the whole
+        # chord in game (a 10 + X shape played as two X).
+        for tech, bit in ((Technique.FRET_MUTE, NOTE_MASK_FRETHANDMUTE),
+                          (Technique.PALM_MUTE, NOTE_MASK_PALMMUTE),
+                          (Technique.ACCENT, NOTE_MASK_ACCENT)):
+            if all(tech in n.techniques for n in g):
+                mask |= bit
         if any(n.sustain > 0 for n in g):
             mask |= NOTE_MASK_SUSTAIN
         if any(n.link_next for n in g):  # XmlToSngNote: chord.IsLinkNext -> Parent

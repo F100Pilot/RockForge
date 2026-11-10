@@ -8,11 +8,13 @@ import pytest
 pytest.importorskip("cryptography")
 
 from rockforge.domain.arrangement import Arrangement, ArrangementKind, Section, SongMetadata
-from rockforge.domain.music import Beat, TabNote, TempoMap, Tuning
+from rockforge.domain.music import Beat, TabNote, Technique, TempoMap, Tuning
 from rockforge.infrastructure import game_install
 from rockforge.infrastructure.packaging.psarc import container, crypto
 from rockforge.infrastructure.packaging.psarc.packer import NativePsarcPacker
 from rockforge.infrastructure.packaging.psarc.sng import (
+    NOTE_MASK_FRETHANDMUTE,
+    NOTE_MASK_PALMMUTE,
     SngTone,
     SngVocal,
     from_arrangement,
@@ -108,6 +110,23 @@ def test_each_rule_catches_the_fault_that_crashed_the_game() -> None:
     open_level.notes[0] = replace(open_level.notes[0], chord_notes_id=-1)
     assert "open_chord_without_chord_notes" in _codes(open_chord)
     assert "vocal_note" in planted(lambda x: x.vocals.append(SngVocal(1.0, 0, 0.5, "la")))
+    # A chord muted as a whole while its strings are not (what one dead string
+    # mirrored onto the chord wrote; the game showed the chord as X).
+    for bit in (NOTE_MASK_FRETHANDMUTE, NOTE_MASK_PALMMUTE):
+        assert "chord_muted_by_some_strings" in planted(lambda x, bit=bit: note(
+            x, chord_at, mask=x.arrangements[-1].notes[chord_at].mask | bit))
+    dead = frozenset({Technique.FRET_MUTE})
+    all_dead = from_arrangement(replace(_chart(), notes=[
+        TabNote(s, 5, 2.0, 0.0, techniques=dead) for s in range(3)]))
+    assert "chord_muted_by_some_strings" not in _codes(all_dead)
+    # The shape that was reported: 10 + a dead string, built with the chord's
+    # mute set (what the builder wrote before) — one string dead, one not.
+    part = from_arrangement(replace(_chart(), notes=[
+        TabNote(0, 10, 2.0, 0.0), TabNote(1, 9, 2.0, 0.0, techniques=dead)]))
+    assert "chord_muted_by_some_strings" not in _codes(part)
+    lv = part.arrangements[-1]
+    lv.notes[0] = replace(lv.notes[0], mask=lv.notes[0].mask | NOTE_MASK_FRETHANDMUTE)
+    assert "chord_muted_by_some_strings" in _codes(part)
 
 
 def _package(tmp_path: Path, vocals: list[VocalEvent] | None = None) -> Path:

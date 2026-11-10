@@ -3351,6 +3351,7 @@ function scoreLegendHtml() {
     legendItem(`${legendNote(20, 18, 7, c[2], true)}${legendNote(44, 18, 5, c[1], true)}`, T('Nota de um acorde (quadrada); o nome do acorde aparece por baixo da pauta')),
     legendItem(`${legendNote(30, 18, 5, LG_BLUE)}<circle cx="30" cy="18" r="13" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="3,3"/><text x="30" y="4" fill="#fff" font-size="9" font-weight="700" text-anchor="middle">PM</text>`,
       T('Nota com técnica (contorno tracejado branco); a sigla por cima diz qual — passa o cursor sobre a nota para ver todas')),
+    legendItem(legendNote(30, 18, 'X', LG_BLUE), T('X: nota abafada (dead note) — no jogo, essa corda toca-se abafada; o traste vê-se ao passar o cursor')),
     legendItem(`<rect x="12" y="15" width="44" height="6" fill="${LG_BLUE}" opacity=".4" rx="3"/>${legendNote(12, 18, 5, LG_BLUE)}`, T('Cauda: a nota fica a soar (sustain)')),
     legendItem(`<path d="${sustainWave(12, 18, 44)}" fill="none" stroke="${LG_BLUE}" stroke-width="2.5" opacity=".8"/>${legendNote(12, 18, 5, LG_BLUE)}`, T('Cauda ondulada: vibrato')),
     legendItem(`<path d="M20,7 Q36,-6 52,7" fill="none" stroke="${LG_BLUE}" stroke-width="2"/>${legendNote(12, 22, 5, LG_BLUE)}`, T('Arco: ligada à nota seguinte, sem nova palhetada')),
@@ -3790,7 +3791,12 @@ function showArr(i) {
         const h = fhps[fk];
         s += `<circle cx="${x}" cy="${y}" r="${R+4}" fill="none" stroke="#e6483c" stroke-width="2"><title>${esc(T('Fora da posição da mão (trastes {a}–{b})', { a: h.fret, b: h.fret + h.width - 1 }))}</title></circle>`;
       }
-      s += `<text x="${x}" y="${y+5}" fill="#14151a" font-size="14" font-weight="700" text-anchor="middle">${n.fret}</text>`;
+      // A dead note (fret-hand mute) is drawn as the X of tab, as Guitar Pro
+      // does: drawn as its fret it read as a note to be played, while the game
+      // plays that string muted. Its fret is kept, in the tooltip.
+      const dead = n.techniques.includes('mute');
+      s += `<text x="${x}" y="${y+5}" fill="#14151a" font-size="14" font-weight="700" text-anchor="middle">${dead ? 'X' : n.fret}</text>`;
+      if (dead) s += `<title>${esc(T('Nota abafada (X, dead note) no traste {f}: no jogo esta corda toca-se abafada', { f: n.fret }))}</title>`;
       // "Editar notas": the end of the tail is a handle that sets the sustain —
       // kept clear of the next note on the string, and left out where there is
       // no room for it (the popup still sets the sustain there).
@@ -3801,7 +3807,7 @@ function showArr(i) {
       if (bend && susW > 14) s += bendCurveSvg(x, y, susW, n);
       if (tech) {
         // bend/vibrato are drawn at the note itself, not as glyphs above it
-        const gt = n.techniques.filter(t => t !== 'vibrato' && t !== 'bend');
+        const gt = n.techniques.filter(t => t !== 'vibrato' && t !== 'bend' && t !== 'mute');
         // Per STRING spacing: a run of palm mutes printed "P.M." over every
         // single note, which is both unreadable and redundant — the dashed ring
         // on the note itself already marks it, and the tooltip lists them all.
@@ -5837,7 +5843,7 @@ function setBendTimes(p, sustain) {
 
 const TECH_CHECK_IDS = [
   ['neHammerOn', 'hammerOn'], ['nePullOff', 'pullOff'], ['neHarmonic', 'harmonic'],
-  ['nePalmMute', 'palmMute'], ['neVibrato', 'vibrato'], ['neTap', 'tap'],
+  ['nePalmMute', 'palmMute'], ['neDead', 'mute'], ['neVibrato', 'vibrato'], ['neTap', 'tap'],
   ['neSlap', 'slap'], ['nePluck', 'pluck'], ['neAccent', 'accent'],
 ];
 let neContext = null;  // { time, string } of the popup currently open, or null

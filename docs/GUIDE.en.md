@@ -586,7 +586,11 @@ It stays pending on both tracks until **Apply and rebuild**; Ctrl+Z undoes it.
 ### Editing notes (✏️ Edit notes mode)
 
 - Click a note: change string, fret, sustain, techniques (hammer-on, pull-off, harmonic, palm
-  mute, vibrato, tapping, slap, pop, accent), bend and slide; **Save** or **Remove note**.
+  mute, **Dead note (X)**, vibrato, tapping, slap, pop, accent), bend and slide; **Save** or
+  **Remove note**.
+- **Dead notes (X):** a dead note from the GP file shows on the score as an **X**, as in Guitar Pro
+  (hover over it to see its fret); in the game that string is played muted. If it should not be
+  muted, untick **Dead note (X)** and rebuild.
 - **Slides:** in **Slide to** type the fret it lands on and choose **Slide to the fret** or
   **Unpitched slide (out)** (a slide out that does not land on a definite note). **Lasts (s)** is
   how long it takes to slide: shorter than the sustain, the note reaches the fret and rings there

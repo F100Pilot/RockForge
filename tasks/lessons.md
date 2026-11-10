@@ -179,3 +179,9 @@ read it back.
 - A comment on an issue said it could not open the attachments; the user deleted it because it plainly was not theirs. Replies on GitHub go out under the user's account: write them short, plain and human, never mention being an AI, being blocked or lacking access, and never explain more than the reporter needs (what was wrong, that it is fixed, when to try).
 
 Update (2026-11-08): editing the comment does not remove the footer any more. On issue #26 it came back on every write, with the MCP tool and with `gh api -X PATCH` alike. Do not loop on it. Post the comment, read it back, and if the footer is there, tell the user straight away which comments need it deleted by hand.
+
+## A mutation check that restores a file within the same second leaves a stale .pyc (2026-11-10)
+Python's bytecode cache is keyed on the source's mtime (whole seconds) and size. A mutation
+that swaps `all(` for `any(` keeps the size; written back in the same second, the restored
+source still ran the MUTATED bytecode, and a later check reported the fix as not working.
+Rule: run mutation checks with `PYTHONDONTWRITEBYTECODE=1`, and delete `__pycache__` after.
