@@ -770,7 +770,7 @@
     },
     {
       "version": "0.12.0-beta.9",
-      "status": "Beta",
+      "status": "Superseded",
       "created": "2026-11-09",
       "published": "2026-11-09",
       "commit": "pending",
@@ -795,10 +795,12 @@
       "version": "0.12.0-beta.10",
       "status": "Beta",
       "created": "2026-11-11",
-      "published": "pending",
+      "published": "2026-11-11",
       "commit": "pending",
       "build": "GitHub Actions release workflow",
-      "artifacts": [],
+      "artifacts": [
+        "https://github.com/F100Pilot/RockForge/releases/tag/v0.12.0-beta.10"
+      ],
       "goal": "Songsterr imports work again (Access declined); a chord with one dead string is no longer muted whole",
       "features": [],
       "improvements": [],
