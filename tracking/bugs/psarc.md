@@ -2942,7 +2942,7 @@ A chord where the Guitar Pro file marks one string as a dead note (X) came out i
 
 **Root cause:** sng_build mirrored every note technique onto the chord mask (DLC Builder sets a chord's mask only from the chord's own flags) and TECHNIQUE_TO_MASK mapped FRET_MUTE to FRETHANDMUTE, the chord's bit, where a note's is MUTE; charts.py's technique list left out mute.
 
-**Fixes:** [FIX-0410](../FIX_LOG.md#fix-0410) (unreleased)
+**Fixes:** [FIX-0410](../FIX_LOG.md#fix-0410) (0.12.0-beta.10)
 
 **Verified:** _pending_ (by _pending_)
 

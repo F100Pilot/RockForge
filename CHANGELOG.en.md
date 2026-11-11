@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.12.0 beta 10] — 2026-11-11
+
 ### Fixes
 
 - **Songsterr lets tabs be imported again ("Access declined"):** Songsterr started refusing with a 403 ("Access declined") requests that do not look like a browser's, so importing a tab and looking up its videos failed. RockForge now asks the way a browser asks, as the guitar-pro-youtube-sync tool did for the same error. If the refusal stands, the message says at which address and what to try (later, or the `.gp` exported from Songsterr). An unpublished tab is still refused at once.

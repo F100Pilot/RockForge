@@ -415,8 +415,8 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0407](#fix-0407) | BUG-0408 | 0.12.0-beta.7 | passed | pending |
 | [FIX-0408](#fix-0408) | BUG-0409 | 0.12.0-beta.7 | passed | pending |
 | [FIX-0409](#fix-0409) | BUG-0410 | 0.12.0-beta.9 | passed | pending |
-| [FIX-0410](#fix-0410) | BUG-0411 | unreleased | passed | pending |
-| [FIX-0411](#fix-0411) | BUG-0412 | unreleased | passed | pending |
+| [FIX-0410](#fix-0410) | BUG-0411 | 0.12.0-beta.10 | passed | pending |
+| [FIX-0411](#fix-0411) | BUG-0412 | 0.12.0-beta.10 | passed | pending |
 
 ## FIX-0001
 
@@ -9019,7 +9019,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-10 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.10 |
 | Commits | f1cc921 |
 | Components | psarc; viewer; editor |
 | Tests | tests/test_psarc_sng.py::test_one_dead_string_mutes_that_string_not_the_whole_chord; tests/test_psarc_sng.py::test_fret_mute_slide_unpitch_and_composite_bend_in_sng; tests/test_psarc_verify.py::test_each_rule_catches_the_fault_that_crashed_the_game; tests/test_api.py::test_a_dead_string_in_a_chord_reaches_the_score_as_a_mute |
@@ -9040,7 +9040,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-11 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.10 |
 | Commits | e570033 |
 | Components | import |
 | Tests | tests/test_songsterr.py::test_songsterr_is_asked_as_a_browser_asks; tests/test_songsterr.py::test_the_access_declined_to_requests_default_client_is_not_met; tests/test_songsterr.py::test_a_403_to_the_browser_is_asked_once_more_with_the_plain_request; tests/test_songsterr.py::test_a_json_403_refused_both_ways_says_where_and_what_to_try; tests/test_songsterr.py::test_songsterrs_own_refusal_is_not_asked_again |

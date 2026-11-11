@@ -2842,7 +2842,7 @@ Importing a Songsterr tab (s7595630, imported before) stopped at /api/meta with 
 
 **Root cause:** _http_get_json asked first with requests' default headers and only retried as a browser on a NON-JSON 403; Songsterr's new refusal of that client answers JSON.
 
-**Fixes:** [FIX-0411](../FIX_LOG.md#fix-0411) (unreleased)
+**Fixes:** [FIX-0411](../FIX_LOG.md#fix-0411) (0.12.0-beta.10)
 
 **Verified:** _pending_ (by _pending_)
 

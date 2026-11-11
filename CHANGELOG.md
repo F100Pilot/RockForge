@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.12.0 beta 10] — 2026-11-11
+
 ### Correções
 
 - **O Songsterr volta a deixar importar tabs ("Access declined"):** o Songsterr passou a recusar com um 403 ("Access declined") os pedidos que não parecem vir de um browser, e a importação de tabs e a procura de vídeos falhavam. O RockForge passa a pedir como um browser pede, como fez a ferramenta guitar-pro-youtube-sync para o mesmo erro. Se a recusa se mantiver, a mensagem diz em que endereço foi e o que tentar (mais tarde, ou o `.gp` exportado do Songsterr). Uma tab por publicar continua a ser recusada logo.

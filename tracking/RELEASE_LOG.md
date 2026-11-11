@@ -4,6 +4,30 @@
 
 Every version, newest first. What a version fixed and the bugs it still carried come from the bug and fix registers. Process: [docs/RELEASE_PROCESS.md](../docs/RELEASE_PROCESS.md).
 
+## 0.12.0-beta.10
+
+| | |
+|---|---|
+| Status | Beta |
+| Created | 2026-11-11 |
+| Published | _pending_ |
+| Commit | _pending_ |
+| Build | GitHub Actions release workflow |
+| Artifacts | — |
+| Tests | CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow |
+| Approved by | the maintainer (asked for the release) |
+
+**Goal:** Songsterr imports work again (Access declined); a chord with one dead string is no longer muted whole
+
+**Bugs fixed:** 
+
+- [BUG-0411](bugs/psarc.md#bug-0411) A chord with one dead string was muted whole in the native PSARC, and the score showed the dead string as a fret
+- [BUG-0412](bugs/import.md#bug-0412) Songsterr imports failed with "Songsterr refused (403): Access declined"
+
+**Known bugs it carried:** —
+
+**Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
+
 ## 0.12.0-beta.9
 
 | | |
