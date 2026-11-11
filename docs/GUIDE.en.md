@@ -946,7 +946,7 @@ the app itself.
 | The notes drift from the music | Section 6, [The most effective way](#the-most-effective-way): start, BPM, "Mark by ear" on a tab never synced, then "Fix from here". If the file is not exactly the recording (another version, extra bars), the fix belongs in the file itself. |
 | YouTube refuses the download | Install the solver and a JavaScript runtime: `pip install -U "yt-dlp[default]"` and `winget install DenoLand.Deno`, then restart. If it asks for a session, pick **firefox** under "Browser session" (Chrome's cannot be read on Windows). Or upload the video's MP3 yourself. |
 | Songsterr says the tab is unpublished | Only published tabs can be read; pick another tab of the same song. |
-| Songsterr refuses the request (403) and says the answer came from a protection page | Songsterr is refusing automated requests, even made as a browser. Try again later, or export the tab as `.gp` on Songsterr and load that file. |
+| Songsterr refuses the request (403) and says the answer came from a protection page, or shows a reason like "Access declined" | Songsterr is refusing automated requests, even made as a browser. Try again later, or export the tab as `.gp` on Songsterr and load that file. |
 | Certificate error looking up lyrics, cover or Songsterr | Check the PC's date and time, the antivirus (HTTPS scanning) and `pip install --upgrade certifi`. |
 | "Detect lyrics/tone" or "Separate instruments" do nothing | The ML extra is missing (Settings → Software). In the `.exe`, set a Python in Settings → ML Python. On the CPU it takes several minutes. |
 | I changed something and the game did not | Did you press **Apply and rebuild** and install the new version? In Export, "An earlier version of this song is in the game" means no. |

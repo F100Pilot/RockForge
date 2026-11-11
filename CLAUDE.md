@@ -245,8 +245,8 @@ re-inverting the dependency.
    "perfectly", and the opposite of the automatic estimators that were removed
    (see below). `infrastructure/songsterr.py` fetches ONLY those times
    (`/api/meta/{id}` → `revisionId`, then `/api/video-points/{id}/{rev}/list`),
-   with **`requests` and its default headers — the reference tool's exact
-   client** (see the 403 note below), ordering the videos the way that
+   with **`requests` and a browser's headers — the reference tool's exact
+   client since its 403 fix** (see the 403 note below), ordering the videos the way that
    tool picks them. The recording has to be **that same YouTube video's audio**
    — Songsterr's own audio is a different recording and does NOT match the
    times (the user plays it in sync with the tab on Songsterr, so it is the
@@ -4113,14 +4113,17 @@ root-less stand-in for the system store — mutation-checked — the system root
 kept, `CERT_REQUIRED` throughout, the fallback, every client passing the
 shared context, and the explained message).
 
-**Songsterr is asked with `requests`, default headers — the reference tool's
-exact client.** teaqu/guitar-pro-youtube-sync (the tool the user's own GP
-file was built with, proven to work on their machine) calls meta, video
-points and the CloudFront parts as a bare `requests.get(url, timeout=…)`, so
-RockForge does the same instead of `urllib` with an invented `Mozilla/5.0
-(RockForge)` User-Agent (`requests` is a core dependency; `types-requests`
-in `[dev]` for mypy); `test_songsterr_is_asked_with_the_default_requests_client`
-fails if a header is ever added back. Songsterr's TLS trust is therefore
+**Songsterr is asked with `requests` and a browser's headers — the reference
+tool's exact client.** teaqu/guitar-pro-youtube-sync (the tool the user's own
+GP file was built with) calls meta, video points and the CloudFront parts with
+`requests.get(url, timeout=…, headers=SONGSTERR_HEADERS)` since its commit
+dfb48c2 ("Fix Songsterr 403 errors by sending browser-like headers", v1.1.9,
+2026-11 — its comment: Songsterr's nginx rejects requests' default
+`python-requests` User-Agent with a 403); `BROWSER_HEADERS` is that same
+User-Agent/`Accept`/`Accept-Language`. Until then it was a bare
+`requests.get`, and RockForge did the same (`requests` is a core dependency;
+`types-requests` in `[dev]` for mypy). Guarded by
+`test_songsterr_is_asked_as_a_browser_asks`. Songsterr's TLS trust is
 requests' own (certifi), not `_https.ssl_context()` — the same as the
 reference tool (`REQUESTS_CA_BUNDLE` points it at another bundle).
 
@@ -4138,25 +4141,26 @@ the plain status. The status is still carried, so a 403 from a part CDN
 still means "try the next distribution". Guarded by
 `test_a_refusal_or_an_unreadable_answer_is_a_clear_error`.
 
-**A 403 that is NOT Songsterr's JSON is asked again as a browser** (GitHub
-issue #22, 2026-11-03: every tab refused with "Songsterr answered 403 to …"
-while the same `/api/meta` address showed its JSON in the user's browser — so
-a page in front of the API, refusing the automated client). `_http_get_json`
-still asks first with requests' default headers (the reference tool's
-client); a 403 whose body is not a JSON object (`_blocked`) is asked once
-more with `BROWSER_HEADERS` (a browser's User-Agent, `Accept`,
-`Accept-Language`), and once that worked `_browser_first` makes the rest of
-the session ask that way first. Songsterr's own JSON refusal
-(`ERR_UNPUBLISHED`) is never asked twice. Refused both ways, the message says
-the answer came from a protection page, not the API, and points at the `.gp`
-exported from Songsterr. A CloudFront 403 for a part not on that distribution
-costs one extra request per distribution. **Not verified against Songsterr
-from here** (blocked) — whether a browser's headers get through what the
-user hit is the user's test. Guarded by
-`test_a_403_page_in_front_of_the_api_is_asked_again_as_a_browser`,
-`test_songsterrs_own_refusal_is_not_asked_again` and
-`test_a_403_page_that_refuses_the_browser_too_says_so` (the retry, the
-browser-first memory and the JSON rule each mutation-checked).
+**A 403 that is not a final refusal is asked once more, the other way**
+(`_blocked`). GitHub issue #22 (2026-11-03: every tab refused by a page in
+front of the API while the same address opened in the browser) and then
+"Songsterr refused (403): Access declined" in JSON on `/api/meta` of a tab the
+user had imported before (2026-11-11) were both Songsterr refusing requests'
+default User-Agent. `_http_get_json` asks with `BROWSER_HEADERS`; a 403 that
+is not one of the API's final refusals (`FINAL_REFUSALS`: `ERR_UNPUBLISHED`,
+never asked twice) is asked once more with requests' default headers, the
+request that used to get answers. Refused both ways, the message names the
+address and points at the `.gp` exported from Songsterr (a protection page is
+said to be one). A CloudFront 403 for a part not on that distribution costs
+one extra request per distribution. **Not verified against Songsterr from
+here** (blocked): that the headers get through is the reference tool's
+finding and the user's test. Guarded by
+`test_the_access_declined_to_requests_default_client_is_not_met`,
+`test_a_403_to_the_browser_is_asked_once_more_with_the_plain_request`,
+`test_songsterrs_own_refusal_is_not_asked_again`,
+`test_a_json_403_refused_both_ways_says_where_and_what_to_try` and
+`test_a_403_page_that_refuses_the_browser_too_says_so` (browser first, the
+retry and the final-refusal rule each mutation-checked).
 
 ### Automatic tone detection (`/jobs/{id}/detect-tones`)
 

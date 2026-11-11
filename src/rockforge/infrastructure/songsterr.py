@@ -124,6 +124,20 @@ def _refusal(response: Any, url: str) -> str:
             return known
         reason = body.get("reason") or body.get("error")
         if isinstance(reason, str) and reason.strip():
+            if response.status_code == 403:
+                # Refused in JSON for a reason we have no words of our own for
+                # ("Access declined", 2026-11-11, on a tab the user imported
+                # before) — also after asking as a browser asks.
+                return tr(
+                    f"o Songsterr recusou ({response.status_code}): {reason.strip()} "
+                    f"— em {url}. Se o endereço abre no teu browser, o Songsterr "
+                    "está a recusar pedidos automáticos; tenta mais tarde ou usa o "
+                    "ficheiro .gp exportado do Songsterr",
+                    f"Songsterr refused ({response.status_code}): {reason.strip()} "
+                    f"— at {url}. If the address opens in your browser, Songsterr "
+                    "is refusing automated requests; try again later or use the "
+                    ".gp file exported from Songsterr",
+                )
             return tr(
                 f"o Songsterr recusou ({response.status_code}): {reason.strip()}",
                 f"Songsterr refused ({response.status_code}): {reason.strip()}",
@@ -164,9 +178,12 @@ def _revision(meta: Any) -> int:
         )) from exc
 
 
-# Asked when the plain request gets a 403 that is not Songsterr's own JSON
-# refusal (GitHub issue #22: every tab refused while the same address opened
-# in the user's browser) — what a browser sends to that API.
+# What a browser sends to that API — the reference tool's own
+# ``SONGSTERR_HEADERS`` (teaqu/guitar-pro-youtube-sync dfb48c2, "Fix Songsterr
+# 403 errors by sending browser-like headers", 2026-11): Songsterr's nginx now
+# refuses requests' default ``python-requests`` User-Agent with a 403, which
+# reached RockForge as "Access declined" (2026-11-11) and before that as a page
+# in front of the API (GitHub issue #22).
 BROWSER_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -175,10 +192,6 @@ BROWSER_HEADERS = {
     "Accept": "application/json, text/plain, */*",
     "Accept-Language": "en-US,en;q=0.9",
 }
-
-#: Set once the browser's headers got an answer the plain request did not, so
-#: the rest of the session asks that way first instead of twice every time.
-_browser_first = False
 
 
 def _get(url: str, headers: dict[str, str] | None) -> Any:
@@ -190,27 +203,28 @@ def _get(url: str, headers: dict[str, str] | None) -> Any:
         raise SongsterrError(network_error_message(exc, "Songsterr")) from exc
 
 
+#: Songsterr's own refusals that say why for good: asking again changes nothing.
+FINAL_REFUSALS = frozenset({"ERR_UNPUBLISHED"})
+
+
 def _blocked(response: Any) -> bool:
-    """A 403 that is not Songsterr's API refusing (that one answers JSON)."""
-    return response.status_code == 403 and not isinstance(_json_or_none(response), dict)
+    """A 403 worth asking again: anything but a refusal of the API's that says
+    why for good (a protection page, a JSON "Access declined")."""
+    if response.status_code != 403:
+        return False
+    body = _json_or_none(response)
+    return not (isinstance(body, dict) and str(body.get("code") or "") in FINAL_REFUSALS)
 
 
 def _http_get_json(url: str) -> Any:
-    # First ``requests`` with its DEFAULT headers, exactly as
-    # teaqu/guitar-pro-youtube-sync fetches these same endpoints — the client
-    # proven to get answers from the user's machine. A 403 that is a page in
-    # front of the API rather than the API's own JSON refusal is asked again
-    # once as a browser asks (issue #22); the other way round once that worked.
-    global _browser_first
-    order: tuple[dict[str, str] | None, ...] = (
-        (BROWSER_HEADERS, None) if _browser_first else (None, BROWSER_HEADERS)
-    )
-    response = _get(url, order[0])
+    # Asked as a browser asks, as the reference tool now does; a 403 that is
+    # not one of the API's final refusals is asked once more with requests'
+    # default headers, the request that used to get answers.
+    response = _get(url, BROWSER_HEADERS)
     if _blocked(response):
-        retry = _get(url, order[1])
+        retry = _get(url, None)
         if not _blocked(retry):
             response = retry
-            _browser_first = order[1] is not None
     if response.status_code >= 400:
         raise SongsterrError(_refusal(response, url), response.status_code)
     try:

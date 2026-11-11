@@ -94,15 +94,6 @@ def test_an_api_that_changed_shape_is_a_clear_error(meta: Any, entries: Any, mat
         fetch_song("1", get_json=_fake(meta, entries))
 
 
-@pytest.fixture(autouse=True)
-def _plain_request_first(monkeypatch: pytest.MonkeyPatch) -> None:
-    # The module remembers, for the session, that the browser's headers were
-    # needed; every test starts from the plain request.
-    from rockforge.infrastructure import songsterr
-
-    monkeypatch.setattr(songsterr, "_browser_first", False)
-
-
 class _Answer:
     def __init__(self, status: int, body: Any = None) -> None:
         self.status_code, self._body = status, body
@@ -113,10 +104,10 @@ class _Answer:
         return self._body
 
 
-def test_songsterr_is_asked_with_the_default_requests_client(
+def test_songsterr_is_asked_as_a_browser_asks(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # The reference tool's exact call (requests, default headers) comes first.
+    # The reference tool's call since its 403 fix (browser-like headers).
     import requests
 
     from rockforge.infrastructure import songsterr
@@ -129,7 +120,11 @@ def test_songsterr_is_asked_with_the_default_requests_client(
 
     monkeypatch.setattr(requests, "get", fake_get)
     assert songsterr._http_get_json("https://www.songsterr.com/api/meta/1") == {"ok": True}
-    assert calls == [(("https://www.songsterr.com/api/meta/1",), {"timeout": songsterr.TIMEOUT_S})]
+    assert calls == [(
+        ("https://www.songsterr.com/api/meta/1",),
+        {"timeout": songsterr.TIMEOUT_S, "headers": songsterr.BROWSER_HEADERS},
+    )]
+    assert "Mozilla" in songsterr.BROWSER_HEADERS["User-Agent"]
 
 
 @pytest.mark.parametrize(
@@ -159,7 +154,7 @@ def test_a_refusal_or_an_unreadable_answer_is_a_clear_error(
     assert info.value.status == status
 
 
-def test_a_403_page_in_front_of_the_api_is_asked_again_as_a_browser(
+def test_a_403_page_in_front_of_the_api_is_not_met_asking_as_a_browser(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # GitHub issue #22: every tab refused with a 403 that was not Songsterr's
@@ -179,12 +174,27 @@ def test_a_403_page_in_front_of_the_api_is_asked_again_as_a_browser(
     monkeypatch.setattr(requests, "get", fake_get)
     url = "https://www.songsterr.com/api/meta/1"
     assert songsterr._http_get_json(url) == {"ok": True}
-    assert [k.get("headers") for k in calls] == [None, songsterr.BROWSER_HEADERS]
-    assert "Mozilla" in songsterr.BROWSER_HEADERS["User-Agent"]
-    # Once that worked, the session asks as a browser first — one request.
-    calls.clear()
-    assert songsterr._http_get_json(url) == {"ok": True}
     assert [k.get("headers") for k in calls] == [songsterr.BROWSER_HEADERS]
+
+
+def test_a_403_to_the_browser_is_asked_once_more_with_the_plain_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import requests
+
+    from rockforge.infrastructure import songsterr
+
+    calls: list[dict[str, Any]] = []
+
+    def fake_get(_url: str, **k: Any) -> _Answer:
+        calls.append(k)
+        if "headers" in k:
+            return _Answer(403, ValueError("<html>blocked</html>"))
+        return _Answer(200, {"ok": True})
+
+    monkeypatch.setattr(requests, "get", fake_get)
+    assert songsterr._http_get_json("https://www.songsterr.com/api/meta/1") == {"ok": True}
+    assert [k.get("headers") for k in calls] == [songsterr.BROWSER_HEADERS, None]
 
 
 def test_songsterrs_own_refusal_is_not_asked_again(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -227,7 +237,6 @@ def test_a_403_page_that_refuses_the_browser_too_says_so(
         i18n.reset(token)
     assert info.value.status == 403
     assert len(calls) == 2
-    assert songsterr._browser_first is False
 
 
 def test_an_unreachable_songsterr_is_a_clear_error(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -347,3 +356,54 @@ def test_no_track_at_all_or_a_real_failure_is_an_error() -> None:
     with pytest.raises(SongsterrError, match="pistas"):
         fetch_tab("9", get_json=_tab_fetcher({
             "https://www.songsterr.com/api/meta/9": {"revisionId": 1, "tracks": []}}))
+
+
+def test_the_access_declined_to_requests_default_client_is_not_met(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # 2026-11-11: "Songsterr refused (403): Access declined" on /api/meta of a
+    # tab the user had imported before — Songsterr's nginx refusing requests'
+    # default User-Agent (the reference tool's dfb48c2).
+    import requests
+
+    from rockforge.infrastructure import songsterr
+
+    calls: list[dict[str, Any]] = []
+
+    def fake_get(_url: str, **k: Any) -> _Answer:
+        calls.append(k)
+        if "headers" not in k:
+            return _Answer(403, {"reason": "Access declined"})
+        return _Answer(200, {"ok": True})
+
+    monkeypatch.setattr(requests, "get", fake_get)
+    assert songsterr._http_get_json("https://www.songsterr.com/api/meta/1") == {"ok": True}
+    assert [k.get("headers") for k in calls] == [songsterr.BROWSER_HEADERS]
+
+
+def test_a_json_403_refused_both_ways_says_where_and_what_to_try(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import requests
+
+    from rockforge import i18n
+    from rockforge.infrastructure import songsterr
+
+    calls: list[dict[str, Any]] = []
+
+    def fake_get(_url: str, **k: Any) -> _Answer:
+        calls.append(k)
+        return _Answer(403, {"reason": "Access declined"})
+
+    monkeypatch.setattr(requests, "get", fake_get)
+    url = "https://www.songsterr.com/api/meta/7"
+    token = i18n.use("en")
+    try:
+        with pytest.raises(SongsterrError) as info:
+            songsterr._http_get_json(url)
+    finally:
+        i18n.reset(token)
+    message = str(info.value)
+    assert "Access declined" in message and url in message and ".gp file" in message
+    assert info.value.status == 403
+    assert len(calls) == 2

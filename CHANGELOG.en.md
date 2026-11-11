@@ -8,6 +8,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### Fixes
 
+- **Songsterr lets tabs be imported again ("Access declined"):** Songsterr started refusing with a 403 ("Access declined") requests that do not look like a browser's, so importing a tab and looking up its videos failed. RockForge now asks the way a browser asks, as the guitar-pro-youtube-sync tool did for the same error. If the refusal stands, the message says at which address and what to try (later, or the `.gp` exported from Songsterr). An unpublished tab is still refused at once.
+
 - **A chord with one muted string no longer comes out fully muted in the game:** when the GP file marks only one string of a chord as dead (the X of tab), the `.psarc` muted the whole chord, and the game showed only X. Now only that string is muted. The score also shows those notes as an **X** (they used to look like an ordinary note), and the note editor has **Dead note (X)** to untick it. "Check PSARC" points out this fault in `.psarc` files built before: rebuild them.
 
 ## [0.12.0 beta 9] — 2026-11-09
