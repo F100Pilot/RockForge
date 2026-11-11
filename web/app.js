@@ -4022,6 +4022,27 @@ function fhpForRebuild() {
   });
   return out;
 }
+// Each chart's note edits where the score shows them now, as the next build
+// places them (BUG-0414): they are kept in the BUILT clock, like the notes, but
+// the build applies them after the sync, so a correction made in the same
+// rebuild left them behind — the old note's delete no longer found it and the
+// moved note landed at its old time beside it. The sustain's end goes through
+// the same map. With "Aplicar sync a todos" every chart takes the one on screen.
+function noteOverridesForRebuild(applyToAll = false) {
+  const ms = v => Math.round(v * 1000) / 1000;
+  const out = {};
+  arrangements.forEach((a, idx) => {
+    const list = noteOverridesByKind[a.kind];
+    if (!list || !list.length) return;
+    const at = t => chartDisplayTime(applyToAll ? currentArr : idx, t);
+    out[a.kind] = list.map(o => {
+      const time = Math.max(0, ms(at(o.time)));
+      const sustain = o.sustain > 0 ? Math.max(0, ms(at(o.time + o.sustain) - at(o.time))) : o.sustain;
+      return { ...o, time, sustain };
+    });
+  });
+  return out;
+}
 function fhpLaneSvg(a, fhps, warp, W, y) {
   if (!fhps.length) return '';
   const edited = fhpEdited(a);
@@ -5990,8 +6011,11 @@ function noteAsOverride(n, time, string, fret) {
   };
 }
 // Where a dragged note would land: the nearest point of the note-edit grid
-// (or its own time, when that is nearer — a purely vertical drag keeps it),
-// and the string under the pointer.
+// (or its own time, when that is nearer), and the string under the pointer.
+// A drag that barely moves sideways keeps the note's own time (BUG-0414): a
+// note off the grid (a triplet, a synced chart) jumped to the grid point beside
+// it on a 2-3 px wobble of a drag meant only to change the string.
+const MOVE_KEEP_TIME_PX = 10;
 function noteMoveTarget(nm, dx, dy, altKey) {
   const a = arrangements[currentArr];
   const warp = buildTimeWarp(syncAnchors);
@@ -6002,7 +6026,7 @@ function noteMoveTarget(nm, dx, dy, altKey) {
   }
   const x = nm.origX + dx;
   let time = nm.note.time, gx = nm.origX;
-  if (nm.grid.length) {
+  if (nm.grid.length && Math.abs(dx) >= MOVE_KEEP_TIME_PX) {
     let lo = 0, hi = nm.grid.length - 1;
     while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (nm.grid[mid][1] <= x) lo = mid; else hi = mid; }
     const best = Math.abs(nm.grid[lo][1] - x) <= Math.abs(nm.grid[hi][1] - x) ? nm.grid[lo] : nm.grid[hi];
@@ -6363,7 +6387,7 @@ async function applyAllNow() {
         // Genuinely per-arrangement (unlike tone_changes/sections) — sent as
         // one dict covering every tab's pending edits from this session, same
         // no-prior-default reasoning as tone_changes (an untouched job sends {}).
-        note_overrides: isGpJob() ? noteOverridesByKind : null,
+        note_overrides: isGpJob() ? noteOverridesForRebuild(applyToAll) : null,
         // Each chart's own FHPs, carried through its pending sync; {} = all automatic.
         hand_positions: isGpJob() ? fhpForRebuild() : null,
       }),

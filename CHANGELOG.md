@@ -8,6 +8,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ### Correções
 
+- **Mudar uma nota de corda ou de traste já não deixa a antiga no sítio:** se na mesma reconstrução (ou numa seguinte) também acertavas a sincronização, a nota antiga continuava na partitura e a nova ficava no tempo de antes da correção. Agora as edições de notas acompanham a sincronização, como as secções e as mudanças de tom. Ao arrastar uma nota só para outra corda, um pequeno desvio do rato para o lado já não lhe muda o tempo. Num projeto onde isto já aconteceu, apaga em "Notas ▾" → "Limpar esta pista" e refaz a edição.
+
 - **Editar uma nota já não lhe tira o tremolo nem o harmónico pinch:** em "Editar notas", mudar só o traste (ou a duração) de uma nota com tremolo picking ou harmónico pinch tirava-lhe essa técnica na reconstrução, porque o editor não as recebia. Agora a nota guarda todas as técnicas que tinha e que a janela de edição não mostra, e a pauta passa a marcá-las (**T.P.** e **P.H.**), tal como a pista 3D. O let ring de um arpejo também fica quando se edita uma das notas.
 
 ## [0.12.0 beta 10] — 2026-11-11

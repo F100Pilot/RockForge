@@ -6992,6 +6992,15 @@ code) found these; the rules they leave behind:
   `TECHNIQUES_KEPT_BY_AN_EDIT` (let ring, which the XML cannot carry);
   `test_every_technique_reaches_the_note_editor_or_is_kept_by_the_build`
   holds the two lists together. A moved or copied note still loses let ring.
+  **Note edits are sent where the score shows them** (BUG-0414,
+  `noteOverridesForRebuild`, the `fhpForRebuild` pattern): the build applies
+  them after the sync, so sent in the built clock a correction in the same
+  rebuild left them behind — the old note's delete missed it (5 ms) and the
+  moved note landed at its old time beside it; the sustain's end goes through
+  the same map. A drag under `MOVE_KEEP_TIME_PX` (10) sideways keeps the
+  note's time. Verified with Playwright and real rebuilds of the example
+  project (the old app.js: 113 notes, the old note left and the new one at
+  5 s; now 112, the new one at 6 s, and again after a later sync rebuild).
 - **A sync tool that adds an anchor beside others pins the chart's ends**
   (`pinChartEnds`, used by Arrastar, Marcar, Mover seguintes, Corrigir daqui;
   `planTaps` pins the start beside a lone "Início"). The server refuses two

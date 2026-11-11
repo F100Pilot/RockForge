@@ -8,6 +8,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### Fixes
 
+- **Moving a note to another string or fret no longer leaves the old one behind:** if the same rebuild (or a later one) also corrected the sync, the old note stayed on the score and the new one sat at its time from before the correction. Note edits now follow the sync, like sections and tone changes. When you drag a note only onto another string, a small sideways wobble of the mouse no longer changes its time. In a project where this already happened, clear it with "Notes ▾" → "Clear this track" and redo the edit.
+
 - **Editing a note no longer takes away its tremolo or pinch harmonic:** in "Edit notes", changing only the fret (or the length) of a note with tremolo picking or a pinch harmonic removed that technique on the rebuild, because the editor never received it. A note now keeps every technique it had that the edit window does not show, and the score marks them (**T.P.** and **P.H.**), as the 3D highway does. An arpeggio's let ring also stays when one of its notes is edited.
 
 ## [0.12.0 beta 10] — 2026-11-11
