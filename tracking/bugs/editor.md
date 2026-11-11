@@ -544,3 +544,44 @@ In "Editar notas", saving an edit of a note sent only the techniques the popup h
 - 2026-11-10 — Triaged: /arrangements leaves tremolo/pinchHarmonic out; the popup and _apply_note_overrides replace techniques
 - 2026-11-10 — In Progress: send every XML flag, keep what the popup does not control, keep let ring on the backend
 - 2026-11-10 — Fixed: FIX-0412 (497f254)
+
+## BUG-0414
+
+**Moving a note in the note editor left the old note and put the new one at its time from before a sync correction**
+
+| | |
+|---|---|
+| Detected | 2026-11-11 |
+| Reported by | the maintainer |
+| Found in | 0.12.0-beta.10 |
+| Build / commit | _pending_ |
+| Severity | High |
+| Priority | P2 |
+| Status | Fixed |
+
+A note moved to another string or fret in "Editar notas", then "Aplicar e reconstruir": the new note existed but the old one stayed, and the new note's time was off. The edits were sent in the built clock while the build applies them after the sync, so with a sync correction in the same or a later rebuild the delete missed the old note and the moved note landed at the pre-correction time. A near-vertical drag could also snap the note to a grid point a few pixels away.
+
+**Steps to reproduce:** 
+
+1. correct the sync (e.g. Início +1 s)
+2. move a note to another string in Editar notas
+3. Aplicar e reconstruir
+
+**Expected:** Only the moved note, on its new string at the note's own (corrected) time.
+
+**Observed:** Reproduced on the example project with the old app.js: 113 notes instead of 112, the old note still there, the new one at 5 s where the chart now played it at 6 s.
+
+**Root cause:** applyAll sent noteOverridesByKind raw, unlike fhpForRebuild/toneChangesShown/sectionsForRebuild; noteMoveTarget snapped to the nearest grid point on any sideways movement.
+
+**Fixes:** [FIX-0413](../FIX_LOG.md#fix-0413) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-11 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-11 — Open: reported by the maintainer
+- 2026-11-11 — Triaged: note overrides sent in the built clock; reproduced with Playwright on the example project
+- 2026-11-11 — In Progress: send them through chartDisplayTime like the FHPs
+- 2026-11-11 — Fixed: FIX-0413 (3e103a5)

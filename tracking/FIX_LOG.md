@@ -418,6 +418,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0410](#fix-0410) | BUG-0411 | 0.12.0-beta.10 | passed | pending |
 | [FIX-0411](#fix-0411) | BUG-0412 | 0.12.0-beta.10 | passed | pending |
 | [FIX-0412](#fix-0412) | BUG-0413 | unreleased | passed | pending |
+| [FIX-0413](#fix-0413) | BUG-0414 | unreleased | pending | pending |
 
 ## FIX-0001
 
@@ -9070,3 +9071,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | _pending_ |
 | Regression risk | Low: the viewer now receives tremolo and pinch harmonic (the 3D highway already draws them, the practice mode already leaves pinch harmonics out); a moved or copied note at a new slot still cannot keep let ring. |
+
+## FIX-0413
+
+**Bugs:** [BUG-0414](bugs/editor.md#bug-0414)
+
+**Root cause:** Note edits were sent in the built clock while the build applies them after the pending sync.
+
+**Solution:** noteOverridesForRebuild maps each edit's time and sustain end through the chart's pending map (the one on screen under "Aplicar sync a todos"), like fhpForRebuild; noteMoveTarget keeps the note's time when the drag moved less than MOVE_KEEP_TIME_PX (10) sideways.
+
+| | |
+|---|---|
+| Date | 2026-11-11 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 3e103a5 |
+| Components | editor |
+| Tests | — |
+| Manual checks | Playwright on a live server with the example project: Início +1 s and a note moved to another string, a real rebuild — with the old app.js 113 notes, the old note left and the new one at 5 s; with the fix 112, the old gone, the new one at 6 s; edit and rebuild, then Início +1 s and rebuild: the stored edits moved with it (the new note at 6 s, nothing on the old string); noteMoveTarget on a note just off the grid: 0/3/9 px sideways keep its time and change the string, 40 px moves it |
+| Test result | _pending_ |
+| Validation | _pending_ |
+| Regression risk | Low: the same mapping the hand positions, tone changes and sections already use. Browser-only, no pytest coverage. |

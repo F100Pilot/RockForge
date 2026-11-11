@@ -20602,6 +20602,57 @@
           "note": "FIX-0412 (497f254)"
         }
       ]
+    },
+    {
+      "id": "BUG-0414",
+      "title": "Moving a note in the note editor left the old note and put the new one at its time from before a sync correction",
+      "detected": "2026-11-11",
+      "reported_by": "the maintainer",
+      "found_in_version": "0.12.0-beta.10",
+      "found_in_build": "pending",
+      "module": "editor",
+      "description": "A note moved to another string or fret in \"Editar notas\", then \"Aplicar e reconstruir\": the new note existed but the old one stayed, and the new note's time was off. The edits were sent in the built clock while the build applies them after the sync, so with a sync correction in the same or a later rebuild the delete missed the old note and the moved note landed at the pre-correction time. A near-vertical drag could also snap the note to a grid point a few pixels away.",
+      "steps": [
+        "correct the sync (e.g. Início +1 s)",
+        "move a note to another string in Editar notas",
+        "Aplicar e reconstruir"
+      ],
+      "expected": "Only the moved note, on its new string at the note's own (corrected) time.",
+      "observed": "Reproduced on the example project with the old app.js: 113 notes instead of 112, the old note still there, the new one at 5 s where the chart now played it at 6 s.",
+      "severity": "High",
+      "priority": "P2",
+      "status": "Fixed",
+      "root_cause": "applyAll sent noteOverridesByKind raw, unlike fhpForRebuild/toneChangesShown/sectionsForRebuild; noteMoveTarget snapped to the nearest grid point on any sideways movement.",
+      "fixes": [
+        "FIX-0413"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-11",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-11",
+          "status": "Open",
+          "note": "reported by the maintainer"
+        },
+        {
+          "date": "2026-11-11",
+          "status": "Triaged",
+          "note": "note overrides sent in the built clock; reproduced with Playwright on the example project"
+        },
+        {
+          "date": "2026-11-11",
+          "status": "In Progress",
+          "note": "send them through chartDisplayTime like the FHPs"
+        },
+        {
+          "date": "2026-11-11",
+          "status": "Fixed",
+          "note": "FIX-0413 (3e103a5)"
+        }
+      ]
     }
   ]
 }

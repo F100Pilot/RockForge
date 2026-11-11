@@ -27,6 +27,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 **Known bugs it carried:** 
 
 - [BUG-0413](bugs/editor.md#bug-0413) Editing a note in the viewer dropped its tremolo, pinch harmonic and let ring (Medium, now Fixed)
+- [BUG-0414](bugs/editor.md#bug-0414) Moving a note in the note editor left the old note and put the new one at its time from before a sync correction (High, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

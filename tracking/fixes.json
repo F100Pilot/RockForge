@@ -10397,6 +10397,32 @@
       "test_result": "passed",
       "regression_risk": "Low: the viewer now receives tremolo and pinch harmonic (the 3D highway already draws them, the practice mode already leaves pinch harmonics out); a moved or copied note at a new slot still cannot keep let ring.",
       "validation": "pending"
+    },
+    {
+      "id": "FIX-0413",
+      "bugs": [
+        "BUG-0414"
+      ],
+      "date": "2026-11-11",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "Note edits were sent in the built clock while the build applies them after the pending sync.",
+      "solution": "noteOverridesForRebuild maps each edit's time and sustain end through the chart's pending map (the one on screen under \"Aplicar sync a todos\"), like fhpForRebuild; noteMoveTarget keeps the note's time when the drag moved less than MOVE_KEEP_TIME_PX (10) sideways.",
+      "components": [
+        "editor"
+      ],
+      "commits": [
+        "3e103a5"
+      ],
+      "version": "unreleased",
+      "tests": [],
+      "manual_checks": [
+        "Playwright on a live server with the example project: Início +1 s and a note moved to another string, a real rebuild — with the old app.js 113 notes, the old note left and the new one at 5 s; with the fix 112, the old gone, the new one at 6 s",
+        "edit and rebuild, then Início +1 s and rebuild: the stored edits moved with it (the new note at 6 s, nothing on the old string)",
+        "noteMoveTarget on a note just off the grid: 0/3/9 px sideways keep its time and change the string, 40 px moves it"
+      ],
+      "test_result": "pending",
+      "regression_risk": "Low: the same mapping the hand positions, tone changes and sections already use. Browser-only, no pytest coverage.",
+      "validation": "pending"
     }
   ]
 }
