@@ -417,6 +417,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0409](#fix-0409) | BUG-0410 | 0.12.0-beta.9 | passed | pending |
 | [FIX-0410](#fix-0410) | BUG-0411 | 0.12.0-beta.10 | passed | pending |
 | [FIX-0411](#fix-0411) | BUG-0412 | 0.12.0-beta.10 | passed | pending |
+| [FIX-0412](#fix-0412) | BUG-0413 | unreleased | passed | pending |
 
 ## FIX-0001
 
@@ -9048,3 +9049,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | _pending_ |
 | Regression risk | Low: the request the reference tool now makes; the plain request stays as a fallback. Not run against Songsterr from here (blocked). |
+
+## FIX-0412
+
+**Bugs:** [BUG-0413](bugs/editor.md#bug-0413)
+
+**Root cause:** The viewer's technique list was a copy of its own that missed tremolo and pinch harmonic, the note popup sent only what it shows, and the build replaced a hit note's techniques wholesale.
+
+**Solution:** reader.note_flags (every flag the XML carries) feeds /arrangements; the popup keeps the techniques outside its checkboxes, bend and slide (techniquesBeyondThePopup); _apply_note_overrides keeps TECHNIQUES_KEPT_BY_AN_EDIT (let ring, which the XML cannot carry) on a hit note; the score labels pinch harmonic P.H. and tremolo picking T.P.
+
+| | |
+|---|---|
+| Date | 2026-11-10 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 497f254 |
+| Components | editor; viewer |
+| Tests | tests/test_gp_pipeline.py::test_an_edit_keeps_the_techniques_the_viewer_never_sees; tests/test_gp_pipeline.py::test_every_technique_reaches_the_note_editor_or_is_kept_by_the_build; tests/test_api.py::test_arrangements_send_every_technique_a_note_carries |
+| Manual checks | mutation-checked: dropping the let-ring keep and leaving tremolo/pinchHarmonic out of /arrangements each fail a test; an invented GP5 with a tremolo-picked note built for real; with Playwright (PT 1440 / EN 760 px) its fret changed 3 -> 5 in Editar notas, the override kept techniques ["tremolo"] and the rebuilt XML reads fret="5" tremolo="1"; with the previous app.js the override sent techniques []; the score labels it T.P.; no page errors |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low: the viewer now receives tremolo and pinch harmonic (the 3D highway already draws them, the practice mode already leaves pinch harmonics out); a moved or copied note at a new slot still cannot keep let ring. |

@@ -20551,6 +20551,57 @@
           "note": "FIX-0411 (e570033)"
         }
       ]
+    },
+    {
+      "id": "BUG-0413",
+      "title": "Editing a note in the viewer dropped its tremolo, pinch harmonic and let ring",
+      "detected": "2026-11-10",
+      "reported_by": "the maintainer, in a review request",
+      "found_in_version": "0.12.0-beta.9",
+      "found_in_build": "pending",
+      "module": "editor",
+      "description": "In \"Editar notas\", saving an edit of a note sent only the techniques the popup has checkboxes for (plus bend and slide), and /arrangements never sent tremolo or pinch harmonic to the viewer, so editing such a note (only its fret, say) rebuilt it without them. On the backend an edit replaced the note's techniques with the edit's, so let ring, which the XML has no attribute for, went too, cutting the arpeggio it belonged to.",
+      "steps": [
+        "build a GP file with a tremolo-picked note",
+        "in Editar notas click that note, change only its fret, Guardar",
+        "Aplicar e reconstruir; read the note in the rebuilt XML"
+      ],
+      "expected": "The note at the new fret, still tremolo-picked.",
+      "observed": "The override carried techniques: [] and the rebuilt note had no tremolo attribute (reproduced with Playwright on an invented GP5 with the previous app.js).",
+      "severity": "Medium",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "charts.py parse_note listed its own ten techniques instead of every flag the XML carries; the popup's save built techniques from its checkboxes alone; _apply_note_overrides replaced a hit note's techniques with the edit's, losing those the viewer can never see (let ring).",
+      "fixes": [
+        "FIX-0412"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-10",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-10",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-10",
+          "status": "Triaged",
+          "note": "/arrangements leaves tremolo/pinchHarmonic out; the popup and _apply_note_overrides replace techniques"
+        },
+        {
+          "date": "2026-11-10",
+          "status": "In Progress",
+          "note": "send every XML flag, keep what the popup does not control, keep let ring on the backend"
+        },
+        {
+          "date": "2026-11-10",
+          "status": "Fixed",
+          "note": "FIX-0412 (497f254)"
+        }
+      ]
     }
   ]
 }

@@ -6986,6 +6986,12 @@ code) found these; the rules they leave behind:
 - **A note edit patches the note** (`_apply_note_overrides` uses `replace()`):
   the bend curve, link, fingering and pick direction stay unless the bend or
   fret changed. The popup and the clipboard read the built note's `slide_to`.
+  Its techniques travel whole (BUG-0413): `/arrangements` sends every flag
+  the XML carries (`reader.note_flags`), the popup keeps the ones it has no
+  control for (`techniquesBeyondThePopup`), and the build keeps
+  `TECHNIQUES_KEPT_BY_AN_EDIT` (let ring, which the XML cannot carry);
+  `test_every_technique_reaches_the_note_editor_or_is_kept_by_the_build`
+  holds the two lists together. A moved or copied note still loses let ring.
 - **A sync tool that adds an anchor beside others pins the chart's ends**
   (`pinChartEnds`, used by Arrastar, Marcar, Mover seguintes, Corrigir daqui;
   `planTaps` pins the start beside a lone "Início"). The server refuses two
