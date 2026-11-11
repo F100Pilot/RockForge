@@ -20501,6 +20501,56 @@
           "note": "FIX-0410 (f1cc921)"
         }
       ]
+    },
+    {
+      "id": "BUG-0412",
+      "title": "Songsterr imports failed with \"Songsterr refused (403): Access declined\"",
+      "detected": "2026-11-11",
+      "reported_by": "the maintainer (a screenshot of the import)",
+      "found_in_version": "0.12.0-beta.9",
+      "found_in_build": "pending",
+      "module": "import",
+      "description": "Importing a Songsterr tab (s7595630, imported before) stopped at /api/meta with a 403 whose JSON reason was \"Access declined\". Songsterr's nginx now refuses requests' default python-requests User-Agent; because the body was JSON, RockForge read it as the API's final refusal and never asked again with the browser headers it already had for issue #22.",
+      "steps": [
+        "paste a Songsterr tab link in step 1 of Novo projeto",
+        "import"
+      ],
+      "expected": "The tab is imported, as it was before.",
+      "observed": "\"Couldn't import: Songsterr refused (403): Access declined\".",
+      "severity": "High",
+      "priority": "P1",
+      "status": "Fixed",
+      "root_cause": "_http_get_json asked first with requests' default headers and only retried as a browser on a NON-JSON 403; Songsterr's new refusal of that client answers JSON.",
+      "fixes": [
+        "FIX-0411"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [],
+      "resolved": "2026-11-11",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-11",
+          "status": "Open",
+          "note": "reported with a screenshot"
+        },
+        {
+          "date": "2026-11-11",
+          "status": "Triaged",
+          "note": "the refusal is /api/meta's (parts' 403s are caught); JSON, so never retried"
+        },
+        {
+          "date": "2026-11-11",
+          "status": "In Progress",
+          "note": "the reference tool's dfb48c2 fixed the same 403 with browser headers"
+        },
+        {
+          "date": "2026-11-11",
+          "status": "Fixed",
+          "note": "FIX-0411 (e570033)"
+        }
+      ]
     }
   ]
 }

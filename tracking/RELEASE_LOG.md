@@ -32,6 +32,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 **Known bugs it carried:** 
 
 - [BUG-0411](bugs/psarc.md#bug-0411) A chord with one dead string was muted whole in the native PSARC, and the score showed the dead string as a fret (High, now Fixed)
+- [BUG-0412](bugs/import.md#bug-0412) Songsterr imports failed with "Songsterr refused (403): Access declined" (High, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

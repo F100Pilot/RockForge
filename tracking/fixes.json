@@ -10337,6 +10337,36 @@
       "test_result": "passed",
       "regression_risk": "Medium: a chord's mask no longer carries its strings' hammer-ons, slides, vibrato and the like, as DLC Builder's never does; not seen in game from here.",
       "validation": "pending"
+    },
+    {
+      "id": "FIX-0411",
+      "bugs": [
+        "BUG-0412"
+      ],
+      "date": "2026-11-11",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "Songsterr refuses requests' default User-Agent with a JSON 403, which the client treated as final.",
+      "solution": "Every Songsterr request sends BROWSER_HEADERS (the reference tool's SONGSTERR_HEADERS) first; a 403 that is not in FINAL_REFUSALS (ERR_UNPUBLISHED) is asked once more with the plain request; a JSON 403 that stands names the address and points at the .gp export.",
+      "components": [
+        "import"
+      ],
+      "commits": [
+        "e570033"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_songsterr.py::test_songsterr_is_asked_as_a_browser_asks",
+        "tests/test_songsterr.py::test_the_access_declined_to_requests_default_client_is_not_met",
+        "tests/test_songsterr.py::test_a_403_to_the_browser_is_asked_once_more_with_the_plain_request",
+        "tests/test_songsterr.py::test_a_json_403_refused_both_ways_says_where_and_what_to_try",
+        "tests/test_songsterr.py::test_songsterrs_own_refusal_is_not_asked_again"
+      ],
+      "manual_checks": [
+        "mutation-checked (no bytecode cache): plain request first, no retry, and the old JSON rule each fail a test"
+      ],
+      "test_result": "passed",
+      "regression_risk": "Low: the request the reference tool now makes; the plain request stays as a fallback. Not run against Songsterr from here (blocked).",
+      "validation": "pending"
     }
   ]
 }

@@ -6,7 +6,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 
 | Fixed | Verified | Closed |
 |---|---|---|
-| 135 | 60 | 216 |
+| 136 | 60 | 216 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -421,3 +421,4 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0409](bugs/import.md#bug-0409) | A Songsterr tab's capo was ignored | import | Medium | P2 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
 | [BUG-0410](bugs/import.md#bug-0410) | A Songsterr tab played at the bass's tempo because the other parts did not download | import | High | P2 | Fixed | 0.12.0-beta.8 | 0.12.0-beta.9 |
 | [BUG-0411](bugs/psarc.md#bug-0411) | A chord with one dead string was muted whole in the native PSARC, and the score showed the dead string as a fret | psarc | High | P2 | Fixed | 0.12.0-beta.9 | — |
+| [BUG-0412](bugs/import.md#bug-0412) | Songsterr imports failed with "Songsterr refused (403): Access declined" | import | High | P1 | Fixed | 0.12.0-beta.9 | — |

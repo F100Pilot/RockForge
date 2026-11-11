@@ -416,6 +416,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0408](#fix-0408) | BUG-0409 | 0.12.0-beta.7 | passed | pending |
 | [FIX-0409](#fix-0409) | BUG-0410 | 0.12.0-beta.9 | passed | pending |
 | [FIX-0410](#fix-0410) | BUG-0411 | unreleased | passed | pending |
+| [FIX-0411](#fix-0411) | BUG-0412 | unreleased | passed | pending |
 
 ## FIX-0001
 
@@ -9026,3 +9027,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | _pending_ |
 | Regression risk | Medium: a chord's mask no longer carries its strings' hammer-ons, slides, vibrato and the like, as DLC Builder's never does; not seen in game from here. |
+
+## FIX-0411
+
+**Bugs:** [BUG-0412](bugs/import.md#bug-0412)
+
+**Root cause:** Songsterr refuses requests' default User-Agent with a JSON 403, which the client treated as final.
+
+**Solution:** Every Songsterr request sends BROWSER_HEADERS (the reference tool's SONGSTERR_HEADERS) first; a 403 that is not in FINAL_REFUSALS (ERR_UNPUBLISHED) is asked once more with the plain request; a JSON 403 that stands names the address and points at the .gp export.
+
+| | |
+|---|---|
+| Date | 2026-11-11 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | e570033 |
+| Components | import |
+| Tests | tests/test_songsterr.py::test_songsterr_is_asked_as_a_browser_asks; tests/test_songsterr.py::test_the_access_declined_to_requests_default_client_is_not_met; tests/test_songsterr.py::test_a_403_to_the_browser_is_asked_once_more_with_the_plain_request; tests/test_songsterr.py::test_a_json_403_refused_both_ways_says_where_and_what_to_try; tests/test_songsterr.py::test_songsterrs_own_refusal_is_not_asked_again |
+| Manual checks | mutation-checked (no bytecode cache): plain request first, no retry, and the old JSON rule each fail a test |
+| Test result | passed |
+| Validation | _pending_ |
+| Regression risk | Low: the request the reference tool now makes; the plain request stays as a fallback. Not run against Songsterr from here (blocked). |

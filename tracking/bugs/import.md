@@ -2814,3 +2814,43 @@ A Songsterr tab's tempo map is read from its longest part. When only the bass pa
 - 2026-11-08 — Triaged: the reporter's screenshot shows the bass's tempo map; their exporter fetches parts by partId on both CDN families
 - 2026-11-08 — In Progress: fetch by partId on both families; alternate endings read
 - 2026-11-08 — Fixed: FIX-0409 (fb7e13e)
+
+## BUG-0412
+
+**Songsterr imports failed with "Songsterr refused (403): Access declined"**
+
+| | |
+|---|---|
+| Detected | 2026-11-11 |
+| Reported by | the maintainer (a screenshot of the import) |
+| Found in | 0.12.0-beta.9 |
+| Build / commit | _pending_ |
+| Severity | High |
+| Priority | P1 |
+| Status | Fixed |
+
+Importing a Songsterr tab (s7595630, imported before) stopped at /api/meta with a 403 whose JSON reason was "Access declined". Songsterr's nginx now refuses requests' default python-requests User-Agent; because the body was JSON, RockForge read it as the API's final refusal and never asked again with the browser headers it already had for issue #22.
+
+**Steps to reproduce:** 
+
+1. paste a Songsterr tab link in step 1 of Novo projeto
+2. import
+
+**Expected:** The tab is imported, as it was before.
+
+**Observed:** "Couldn't import: Songsterr refused (403): Access declined".
+
+**Root cause:** _http_get_json asked first with requests' default headers and only retried as a browser on a NON-JSON 403; Songsterr's new refusal of that client answers JSON.
+
+**Fixes:** [FIX-0411](../FIX_LOG.md#fix-0411) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-11 · **Closed:** _pending_
+
+**History:**
+
+- 2026-11-11 — Open: reported with a screenshot
+- 2026-11-11 — Triaged: the refusal is /api/meta's (parts' 403s are caught); JSON, so never retried
+- 2026-11-11 — In Progress: the reference tool's dfb48c2 fixed the same 403 with browser headers
+- 2026-11-11 — Fixed: FIX-0411 (e570033)
