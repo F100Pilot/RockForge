@@ -10336,7 +10336,7 @@
       ],
       "test_result": "passed",
       "regression_risk": "Medium: a chord's mask no longer carries its strings' hammer-ons, slides, vibrato and the like, as DLC Builder's never does; not seen in game from here.",
-      "validation": "pending"
+      "validation": "confirmed by user"
     },
     {
       "id": "FIX-0411",
@@ -10423,6 +10423,33 @@
       "test_result": "pending",
       "regression_risk": "Low: the same mapping the hand positions, tone changes and sections already use. Browser-only, no pytest coverage.",
       "validation": "pending"
+    },
+    {
+      "id": "FIX-0414",
+      "bugs": [
+        "BUG-0415"
+      ],
+      "date": "2026-11-12",
+      "author": "Claude (AI coding assistant) on the maintainer's request",
+      "root_cause": "expand_slide_ins rewrote the previous note into a slide when it crowded the target ('a dense lick'), and its lead-in note was not linked to the target.",
+      "solution": "expand_slide_ins never touches the previous note; with room before the target the lead-in (fret -/+ 3, <= 0.12 s) carries link_next onto it, with none the target stays plain.",
+      "components": [
+        "import"
+      ],
+      "commits": [
+        "f19fd3f"
+      ],
+      "version": "unreleased",
+      "tests": [
+        "tests/test_domain.py::test_slide_in_adds_a_lead_in_linked_to_the_note_when_there_is_room",
+        "tests/test_domain.py::test_a_slide_in_never_turns_the_note_before_it_into_a_slide"
+      ],
+      "manual_checks": [
+        "the reporter's .gp built through /gp/inspect and /jobs/gp: bar 1 reads 6 linked to 9, 8, 12 (no slide), /psarc-check clean"
+      ],
+      "test_result": "passed",
+      "regression_risk": "Low: only scoops change; a lead-in the game would refuse to link is cleared by resolve_links.",
+      "validation": "automated"
     }
   ]
 }

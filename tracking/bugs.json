@@ -20469,16 +20469,18 @@
       "observed": "The user saw the verse's chords as mutes in game while the score showed the notes 10 and 9; the user's XMLs carry 64 (Lead) and 138 (Rhythm) chords with one dead string, all muted whole by the SNG builder.",
       "severity": "High",
       "priority": "P2",
-      "status": "Fixed",
+      "status": "Closed",
       "root_cause": "sng_build mirrored every note technique onto the chord mask (DLC Builder sets a chord's mask only from the chord's own flags) and TECHNIQUE_TO_MASK mapped FRET_MUTE to FRETHANDMUTE, the chord's bit, where a note's is MUTE; charts.py's technique list left out mute.",
       "fixes": [
         "FIX-0410"
       ],
-      "verified_by": "pending",
-      "verification": "pending",
-      "evidence": [],
+      "verified_by": "the reporter (GitHub issue #27)",
+      "verification": "confirmed by user: the rebuilt song played as intended in game on 0.12.0-beta.10",
+      "evidence": [
+        "https://github.com/F100Pilot/RockForge/issues/27#issuecomment-6795598744"
+      ],
       "resolved": "2026-11-10",
-      "closed": "pending",
+      "closed": "2026-11-12",
       "history": [
         {
           "date": "2026-11-10",
@@ -20499,6 +20501,16 @@
           "date": "2026-11-10",
           "status": "Fixed",
           "note": "FIX-0410 (f1cc921)"
+        },
+        {
+          "date": "2026-11-11",
+          "status": "Verified",
+          "note": "the reporter confirmed in game on 0.12.0-beta.10 (issue #27)"
+        },
+        {
+          "date": "2026-11-12",
+          "status": "Closed",
+          "note": "issue #27 closed"
         }
       ]
     },
@@ -20651,6 +20663,58 @@
           "date": "2026-11-11",
           "status": "Fixed",
           "note": "FIX-0413 (3e103a5)"
+        }
+      ]
+    },
+    {
+      "id": "BUG-0415",
+      "title": "A slide into a note turned the picked note before it into a slide the tab does not have",
+      "detected": "2026-11-11",
+      "reported_by": "a user, GitHub issue #29",
+      "found_in_version": "0.12.0-beta.10",
+      "found_in_build": "pending",
+      "module": "import",
+      "description": "A Guitar Pro / Songsterr slide INTO a note (/12) is turned into slides because Rocksmith has no slide-in. When the note before it on the string ended at the target's attack, expand_slide_ins made THAT note slide into the target, so a picked 8 before /12 became an 8-to-12 slide; with room before the target it inserted an unlinked lead-in note 3 frets below, a second attack.",
+      "steps": [
+        "import the Songsterr tab J. Salez - Chill Bachata (or its .gp)",
+        "build and look at bar 1: '/9' and '8 /12'"
+      ],
+      "expected": "The notes of the tab: 8 picked, then 12.",
+      "observed": "In game and on the score the 8 slides to 12, and a separate 6 slides to 9.",
+      "severity": "Medium",
+      "priority": "P2",
+      "status": "Fixed",
+      "root_cause": "expand_slide_ins rewrote the previous note into a slide when it crowded the target ('a dense lick'), and its lead-in note was not linked to the target.",
+      "fixes": [
+        "FIX-0414"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [
+        "https://github.com/F100Pilot/RockForge/issues/29"
+      ],
+      "resolved": "2026-11-12",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-11",
+          "status": "Open",
+          "note": "reported with the .gp and the .psarc"
+        },
+        {
+          "date": "2026-11-12",
+          "status": "Triaged",
+          "note": "the .gp marks Slide flags 16 on the 9 and the 12; the 8 before the 12 became its slide"
+        },
+        {
+          "date": "2026-11-12",
+          "status": "In Progress",
+          "note": "the maintainer chose a lead-in linked to the target, never touching the note before"
+        },
+        {
+          "date": "2026-11-12",
+          "status": "Fixed",
+          "note": "FIX-0414 (f19fd3f)"
         }
       ]
     }

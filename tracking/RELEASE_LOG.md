@@ -28,6 +28,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 - [BUG-0413](bugs/editor.md#bug-0413) Editing a note in the viewer dropped its tremolo, pinch harmonic and let ring (Medium, now Fixed)
 - [BUG-0414](bugs/editor.md#bug-0414) Moving a note in the note editor left the old note and put the new one at its time from before a sync correction (High, now Fixed)
+- [BUG-0415](bugs/import.md#bug-0415) A slide into a note turned the picked note before it into a slide the tab does not have (Medium, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -58,7 +59,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 **Known bugs it carried:** 
 
-- [BUG-0411](bugs/psarc.md#bug-0411) A chord with one dead string was muted whole in the native PSARC, and the score showed the dead string as a fret (High, now Fixed)
+- [BUG-0411](bugs/psarc.md#bug-0411) A chord with one dead string was muted whole in the native PSARC, and the score showed the dead string as a fret (High, now Closed)
 - [BUG-0412](bugs/import.md#bug-0412) Songsterr imports failed with "Songsterr refused (403): Access declined" (High, now Fixed)
 - [BUG-0413](bugs/editor.md#bug-0413) Editing a note in the viewer dropped its tremolo, pinch harmonic and let ring (Medium, now Fixed)
 

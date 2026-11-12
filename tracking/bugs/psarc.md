@@ -2927,7 +2927,7 @@ The manifest grouped chords by time rounded to 0.1 ms (a strummed power chord wa
 | Build / commit | _pending_ |
 | Severity | High |
 | Priority | P2 |
-| Status | Fixed |
+| Status | Closed |
 
 A chord where the Guitar Pro file marks one string as a dead note (X) came out in game as X on every string: the SNG mirrored the string's fret-hand mute onto the whole chord, and wrote a note's mute on the chord's bit. The score drew the dead string as its fret, because /arrangements never passed the mute to the viewer, and the note editor had no dead-note option, so saving an edit dropped it.
 
@@ -2944,9 +2944,13 @@ A chord where the Guitar Pro file marks one string as a dead note (X) came out i
 
 **Fixes:** [FIX-0410](../FIX_LOG.md#fix-0410) (0.12.0-beta.10)
 
-**Verified:** _pending_ (by _pending_)
+**Verified:** confirmed by user: the rebuilt song played as intended in game on 0.12.0-beta.10 (by the reporter (GitHub issue #27))
 
-**Resolved:** 2026-11-10 · **Closed:** _pending_
+**Resolved:** 2026-11-10 · **Closed:** 2026-11-12
+
+**Evidence:**
+
+- https://github.com/F100Pilot/RockForge/issues/27#issuecomment-6795598744
 
 **History:**
 
@@ -2954,3 +2958,5 @@ A chord where the Guitar Pro file marks one string as a dead note (X) came out i
 - 2026-11-10 — Triaged: the XMLs mark one string of each verse chord mute=1; the SNG muted the chord whole
 - 2026-11-10 — In Progress: chord mask and note bit as Rocksmith2014.NET XmlToSngNote; mute to the score
 - 2026-11-10 — Fixed: FIX-0410 (f1cc921)
+- 2026-11-11 — Verified: the reporter confirmed in game on 0.12.0-beta.10 (issue #27)
+- 2026-11-12 — Closed: issue #27 closed

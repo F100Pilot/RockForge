@@ -415,10 +415,11 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0407](#fix-0407) | BUG-0408 | 0.12.0-beta.7 | passed | pending |
 | [FIX-0408](#fix-0408) | BUG-0409 | 0.12.0-beta.7 | passed | pending |
 | [FIX-0409](#fix-0409) | BUG-0410 | 0.12.0-beta.9 | passed | pending |
-| [FIX-0410](#fix-0410) | BUG-0411 | 0.12.0-beta.10 | passed | pending |
+| [FIX-0410](#fix-0410) | BUG-0411 | 0.12.0-beta.10 | passed | confirmed by user |
 | [FIX-0411](#fix-0411) | BUG-0412 | 0.12.0-beta.10 | passed | pending |
 | [FIX-0412](#fix-0412) | BUG-0413 | unreleased | passed | pending |
 | [FIX-0413](#fix-0413) | BUG-0414 | unreleased | pending | pending |
+| [FIX-0414](#fix-0414) | BUG-0415 | unreleased | passed | automated |
 
 ## FIX-0001
 
@@ -9027,7 +9028,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Tests | tests/test_psarc_sng.py::test_one_dead_string_mutes_that_string_not_the_whole_chord; tests/test_psarc_sng.py::test_fret_mute_slide_unpitch_and_composite_bend_in_sng; tests/test_psarc_verify.py::test_each_rule_catches_the_fault_that_crashed_the_game; tests/test_api.py::test_a_dead_string_in_a_chord_reaches_the_score_as_a_mute |
 | Manual checks | mutation-checked (no bytecode cache): the note bit, any-instead-of-all on the chord, the checker's rule and the /arrangements mute each fail a test; the user's own Lead and Rhythm XMLs rebuilt: 64 and 138 chords with one dead string, none muted whole, check_sng clean; an invented GP5 with a 10 + X chord built for real: /psarc-check clean, the SNG read back with MUTE on the dead string only; the X, its tooltip, the legend and the checkbox with Playwright (PT 1440 / EN 760 px); unticking one and rebuilding left it played |
 | Test result | passed |
-| Validation | _pending_ |
+| Validation | confirmed by user |
 | Regression risk | Medium: a chord's mask no longer carries its strings' hammer-ons, slides, vibrato and the like, as DLC Builder's never does; not seen in game from here. |
 
 ## FIX-0411
@@ -9092,3 +9093,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | _pending_ |
 | Validation | _pending_ |
 | Regression risk | Low: the same mapping the hand positions, tone changes and sections already use. Browser-only, no pytest coverage. |
+
+## FIX-0414
+
+**Bugs:** [BUG-0415](bugs/import.md#bug-0415)
+
+**Root cause:** expand_slide_ins rewrote the previous note into a slide when it crowded the target ('a dense lick'), and its lead-in note was not linked to the target.
+
+**Solution:** expand_slide_ins never touches the previous note; with room before the target the lead-in (fret -/+ 3, <= 0.12 s) carries link_next onto it, with none the target stays plain.
+
+| | |
+|---|---|
+| Date | 2026-11-12 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | f19fd3f |
+| Components | import |
+| Tests | tests/test_domain.py::test_slide_in_adds_a_lead_in_linked_to_the_note_when_there_is_room; tests/test_domain.py::test_a_slide_in_never_turns_the_note_before_it_into_a_slide |
+| Manual checks | the reporter's .gp built through /gp/inspect and /jobs/gp: bar 1 reads 6 linked to 9, 8, 12 (no slide), /psarc-check clean |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: only scoops change; a lead-in the game would refuse to link is cleared by resolve_links. |

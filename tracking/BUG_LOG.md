@@ -6,7 +6,7 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 
 | Fixed | Verified | Closed |
 |---|---|---|
-| 138 | 60 | 216 |
+| 138 | 60 | 217 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -420,7 +420,8 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0408](bugs/import.md#bug-0408) | A Songsterr tab took the tempo map of its first charted part | import | Medium | P2 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
 | [BUG-0409](bugs/import.md#bug-0409) | A Songsterr tab's capo was ignored | import | Medium | P2 | Fixed | 0.12.0-beta.6 | 0.12.0-beta.7 |
 | [BUG-0410](bugs/import.md#bug-0410) | A Songsterr tab played at the bass's tempo because the other parts did not download | import | High | P2 | Fixed | 0.12.0-beta.8 | 0.12.0-beta.9 |
-| [BUG-0411](bugs/psarc.md#bug-0411) | A chord with one dead string was muted whole in the native PSARC, and the score showed the dead string as a fret | psarc | High | P2 | Fixed | 0.12.0-beta.9 | 0.12.0-beta.10 |
+| [BUG-0411](bugs/psarc.md#bug-0411) | A chord with one dead string was muted whole in the native PSARC, and the score showed the dead string as a fret | psarc | High | P2 | Closed | 0.12.0-beta.9 | 0.12.0-beta.10 |
 | [BUG-0412](bugs/import.md#bug-0412) | Songsterr imports failed with "Songsterr refused (403): Access declined" | import | High | P1 | Fixed | 0.12.0-beta.9 | 0.12.0-beta.10 |
 | [BUG-0413](bugs/editor.md#bug-0413) | Editing a note in the viewer dropped its tremolo, pinch harmonic and let ring | editor | Medium | P3 | Fixed | 0.12.0-beta.9 | — |
 | [BUG-0414](bugs/editor.md#bug-0414) | Moving a note in the note editor left the old note and put the new one at its time from before a sync correction | editor | High | P2 | Fixed | 0.12.0-beta.10 | — |
+| [BUG-0415](bugs/import.md#bug-0415) | A slide into a note turned the picked note before it into a slide the tab does not have | import | Medium | P2 | Fixed | 0.12.0-beta.10 | — |

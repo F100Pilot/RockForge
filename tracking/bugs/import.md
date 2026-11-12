@@ -2854,3 +2854,47 @@ Importing a Songsterr tab (s7595630, imported before) stopped at /api/meta with 
 - 2026-11-11 — Triaged: the refusal is /api/meta's (parts' 403s are caught); JSON, so never retried
 - 2026-11-11 — In Progress: the reference tool's dfb48c2 fixed the same 403 with browser headers
 - 2026-11-11 — Fixed: FIX-0411 (e570033)
+
+## BUG-0415
+
+**A slide into a note turned the picked note before it into a slide the tab does not have**
+
+| | |
+|---|---|
+| Detected | 2026-11-11 |
+| Reported by | a user, GitHub issue #29 |
+| Found in | 0.12.0-beta.10 |
+| Build / commit | _pending_ |
+| Severity | Medium |
+| Priority | P2 |
+| Status | Fixed |
+
+A Guitar Pro / Songsterr slide INTO a note (/12) is turned into slides because Rocksmith has no slide-in. When the note before it on the string ended at the target's attack, expand_slide_ins made THAT note slide into the target, so a picked 8 before /12 became an 8-to-12 slide; with room before the target it inserted an unlinked lead-in note 3 frets below, a second attack.
+
+**Steps to reproduce:** 
+
+1. import the Songsterr tab J. Salez - Chill Bachata (or its .gp)
+2. build and look at bar 1: '/9' and '8 /12'
+
+**Expected:** The notes of the tab: 8 picked, then 12.
+
+**Observed:** In game and on the score the 8 slides to 12, and a separate 6 slides to 9.
+
+**Root cause:** expand_slide_ins rewrote the previous note into a slide when it crowded the target ('a dense lick'), and its lead-in note was not linked to the target.
+
+**Fixes:** [FIX-0414](../FIX_LOG.md#fix-0414) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-12 · **Closed:** _pending_
+
+**Evidence:**
+
+- https://github.com/F100Pilot/RockForge/issues/29
+
+**History:**
+
+- 2026-11-11 — Open: reported with the .gp and the .psarc
+- 2026-11-12 — Triaged: the .gp marks Slide flags 16 on the 9 and the 12; the 8 before the 12 became its slide
+- 2026-11-12 — In Progress: the maintainer chose a lead-in linked to the target, never touching the note before
+- 2026-11-12 — Fixed: FIX-0414 (f19fd3f)
