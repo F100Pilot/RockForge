@@ -8,6 +8,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ### Fixes
 
+- **A slide into a note no longer turns the note before it into a slide:** when the tab marks a slide into a note (like "8 /12"), the picked note before it became a slide up to that note (the 8 slid to the 12), which the tab does not have. The note before is now left as it is. When there is room before the note, the slide-in is still a short note a few frets lower, now linked to the note, so the game shows one attack sliding onto it. When there is no room, the note stays plain. Rebuild the song to see the change.
+
 - **Moving a note to another string or fret no longer leaves the old one behind:** if the same rebuild (or a later one) also corrected the sync, the old note stayed on the score and the new one sat at its time from before the correction. Note edits now follow the sync, like sections and tone changes. When you drag a note only onto another string, a small sideways wobble of the mouse no longer changes its time. In a project where this already happened, clear it with "Notes ▾" → "Clear this track" and redo the edit.
 
 - **Editing a note no longer takes away its tremolo or pinch harmonic:** in "Edit notes", changing only the fret (or the length) of a note with tremolo picking or a pinch harmonic removed that technique on the rebuild, because the editor never received it. A note now keeps every technique it had that the edit window does not show, and the score marks them (**T.P.** and **P.H.**), as the 3D highway does. An arpeggio's let ring also stays when one of its notes is edited.

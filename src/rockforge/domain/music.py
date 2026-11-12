@@ -72,24 +72,20 @@ def expand_slide_ins(
     *,
     min_room: float = 0.05,
     max_dt: float = 0.12,
-    max_scoop_frets: int = 5,
 ) -> list[TabNote]:
-    """Turn ``slide_in_from`` scoops into real slides.
+    """Turn ``slide_in_from`` scoops into a short slide LINKED to the note.
 
     A GP "slide into" a note (from below/above) has no source note — it's a
-    flourish. Rocksmith has no slide-in attribute either (only slideTo out to a
-    fret), so we represent it the way real charts do, in one of two ways per note:
-
-    - **Room before it** (no note crowding the attack): insert a short lead-in
-      note a few frets away that slides INTO the target, ending at its attack.
-    - **A note immediately precedes it** on the string (a dense lick): make THAT
-      note slide into the target instead — no extra note — provided it isn't
-      already sliding and is within a few frets (so the slide reads as a scoop,
-      not a huge jump).
-
-    If neither fits (a big pitch jump with no room), the note is left plain — the
-    honest limit, since Rocksmith can't show a free-floating scoop there. The
-    marker is cleared on the target either way.
+    flourish — and Rocksmith has no slide-in attribute (only slideTo out to a
+    fret). With room before the note, a short lead-in a few frets away slides
+    into it and is linked to it (``link_next``, Rocksmith's linkNext), so the
+    game shows one attack sliding onto the written fret instead of two picked
+    notes. With no room the note is left plain. The note before it is never
+    touched: making it slide into the target (as this used to, "a dense
+    lick") turned a picked 8 into an 8-to-12 slide the tab does not have
+    (GitHub issue #29). ``resolve_links`` still clears a link the game would
+    refuse (the target in a chord), leaving an ordinary slide. The marker is
+    cleared on the target either way.
     """
     by_string: dict[int, list[int]] = {}
     for i, n in enumerate(notes):
@@ -113,20 +109,8 @@ def expand_slide_ins(
                 lead_ins.append(TabNote(
                     string=n.string, fret=source, time=n.time - dt, sustain=dt,
                     techniques=frozenset({Technique.SLIDE}), slide_to_fret=n.fret,
+                    link_next=True,
                 ))
-            elif prev_i is not None and room <= min_room:
-                # only a note that crowds the attack slides into it: a scoop
-                # whose source is its own fret (into fret 1 from below) used to
-                # turn a note seconds earlier into a seconds-long slide
-                p = result[prev_i]
-                if (p.slide_to_fret is None and p.slide_unpitch_to is None
-                        and p.fret != n.fret and abs(p.fret - n.fret) <= max_scoop_frets):
-                    result[prev_i] = replace(
-                        p,
-                        techniques=p.techniques | {Technique.SLIDE},
-                        slide_to_fret=n.fret,
-                        sustain=max(p.sustain, n.time - p.time),
-                    )
     out = result + lead_ins
     out.sort(key=lambda x: (x.time, x.string))
     return out

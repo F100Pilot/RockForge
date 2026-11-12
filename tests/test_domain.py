@@ -13,6 +13,7 @@ from rockforge.domain.music import (
     expand_trills,
     is_composite_bend,
     is_plain_rise,
+    resolve_links,
 )
 
 
@@ -115,7 +116,7 @@ def test_sustain_gap_skips_let_ring_notes() -> None:
     assert out[0].sustain == 1.0  # let-ring keeps its full sustain into the next note
 
 
-def test_slide_in_adds_lead_in_note_when_there_is_room() -> None:
+def test_slide_in_adds_a_lead_in_linked_to_the_note_when_there_is_room() -> None:
     notes = [
         TabNote(string=0, fret=5, time=0.0, sustain=0.2),   # ends 0.2, far before
         TabNote(string=0, fret=12, time=1.0, sustain=0.3, slide_in_from=9),
@@ -124,29 +125,25 @@ def test_slide_in_adds_lead_in_note_when_there_is_room() -> None:
     assert len(out) == 3  # a lead-in note was inserted
     lead = next(n for n in out if n.fret == 9)
     assert lead.slide_to_fret == 12 and Technique.SLIDE in lead.techniques
-    assert lead.time < 1.0 and lead.time + lead.sustain <= 1.0 + 1e-9
+    # linked: the game shows one attack sliding onto the 12, not two picks
+    assert lead.link_next
+    assert lead.time < 1.0 and abs(lead.time + lead.sustain - 1.0) < 1e-9
     assert next(n for n in out if n.fret == 12).slide_in_from is None  # marker cleared
+    # and the link survives the rules the game holds a link to
+    linked = resolve_links(out)
+    assert next(n for n in linked if n.fret == 9).link_next
 
 
-def test_slide_in_makes_previous_note_slide_when_crowded() -> None:
+def test_a_slide_in_never_turns_the_note_before_it_into_a_slide() -> None:
+    """GitHub issue #29: a picked 8 followed by a scoop into 12 came out as an
+    8-to-12 slide the tab does not have."""
     notes = [
-        TabNote(string=0, fret=10, time=0.9, sustain=0.1),  # adjacent, near in pitch
+        TabNote(string=0, fret=8, time=0.72, sustain=0.28),  # ends at the attack
         TabNote(string=0, fret=12, time=1.0, sustain=0.3, slide_in_from=9),
     ]
     out = expand_slide_ins(notes)
-    assert len(out) == 2  # no extra note — the previous note carries the slide
-    prev = next(n for n in out if n.fret == 10)
-    assert prev.slide_to_fret == 12 and Technique.SLIDE in prev.techniques
-
-
-def test_slide_in_left_plain_on_a_big_jump_with_no_room() -> None:
-    notes = [
-        TabNote(string=0, fret=2, time=0.9, sustain=0.1),   # adjacent but far in pitch
-        TabNote(string=0, fret=17, time=1.0, sustain=0.3, slide_in_from=14),
-    ]
-    out = expand_slide_ins(notes)
-    assert len(out) == 2
-    assert next(n for n in out if n.fret == 2).slide_to_fret is None  # not forced
+    assert [(n.fret, n.time, n.sustain, n.slide_to_fret, n.techniques) for n in out] == [
+        (8, 0.72, 0.28, None, frozenset()), (12, 1.0, 0.3, None, frozenset())]
 
 
 def test_trill_expands_to_alternating_hammer_pull_run() -> None:

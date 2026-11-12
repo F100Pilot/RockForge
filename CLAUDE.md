@@ -640,6 +640,21 @@ re-inverting the dependency.
    the synth plays open strings at it (`ArrangementOut.capo`, `noteMidi`). Not seen
    in game from here. Guarded by `test_capo.py`.
 
+   **A slide INTO a note (GP "/9", SlideType -1/-2, GPIF Slide flags 16/32)**
+   has no source note and Rocksmith has no slide-in, so `music.expand_slide_ins`
+   (both parsers) inserts, when there is room before the note, a short lead-in a
+   few frets away (fret ∓ 3, ≤ 0.12 s) that slides into it LINKED to it
+   (`link_next`: one attack sliding onto the written fret); with no room the
+   note stays plain. **It never touches the note before**: it used to make a
+   crowding previous note slide into the target, so a picked 8 before "/12"
+   became an 8-to-12 slide the tab does not have (GitHub issue #29, a Songsterr
+   tab; the linked lead-in was the maintainer's choice over leaving every scoop
+   plain). `resolve_links` still clears a link the game would refuse (the target
+   in a chord). Guarded by
+   `test_slide_in_adds_a_lead_in_linked_to_the_note_when_there_is_room` and
+   `test_a_slide_in_never_turns_the_note_before_it_into_a_slide` (both
+   mutation-checked); the reporter's `.gp` built with a clean `/psarc-check`.
+
    **Tied notes** (GP `(17)` in parentheses — a held continuation, not a
    re-pick) are folded into the note they extend in BOTH parsers, never emitted
    as a second attack: GP5 via `NoteType.tie` (inline, tracking the last note
