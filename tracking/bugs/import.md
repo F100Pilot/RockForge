@@ -2882,7 +2882,7 @@ A Guitar Pro / Songsterr slide INTO a note (/12) is turned into slides because R
 
 **Root cause:** expand_slide_ins rewrote the previous note into a slide when it crowded the target ('a dense lick'), and its lead-in note was not linked to the target.
 
-**Fixes:** [FIX-0414](../FIX_LOG.md#fix-0414) (unreleased)
+**Fixes:** [FIX-0414](../FIX_LOG.md#fix-0414) (0.12.0-beta.11)
 
 **Verified:** _pending_ (by _pending_)
 

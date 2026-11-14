@@ -417,9 +417,9 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0409](#fix-0409) | BUG-0410 | 0.12.0-beta.9 | passed | pending |
 | [FIX-0410](#fix-0410) | BUG-0411 | 0.12.0-beta.10 | passed | confirmed by user |
 | [FIX-0411](#fix-0411) | BUG-0412 | 0.12.0-beta.10 | passed | pending |
-| [FIX-0412](#fix-0412) | BUG-0413 | unreleased | passed | pending |
-| [FIX-0413](#fix-0413) | BUG-0414 | unreleased | pending | pending |
-| [FIX-0414](#fix-0414) | BUG-0415 | unreleased | passed | automated |
+| [FIX-0412](#fix-0412) | BUG-0413 | 0.12.0-beta.11 | passed | pending |
+| [FIX-0413](#fix-0413) | BUG-0414 | 0.12.0-beta.11 | pending | pending |
+| [FIX-0414](#fix-0414) | BUG-0415 | 0.12.0-beta.11 | passed | automated |
 
 ## FIX-0001
 
@@ -9064,7 +9064,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-10 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.11 |
 | Commits | 497f254 |
 | Components | editor; viewer |
 | Tests | tests/test_gp_pipeline.py::test_an_edit_keeps_the_techniques_the_viewer_never_sees; tests/test_gp_pipeline.py::test_every_technique_reaches_the_note_editor_or_is_kept_by_the_build; tests/test_api.py::test_arrangements_send_every_technique_a_note_carries |
@@ -9085,7 +9085,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-11 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.11 |
 | Commits | 3e103a5 |
 | Components | editor |
 | Tests | — |
@@ -9106,7 +9106,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-12 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.11 |
 | Commits | f19fd3f |
 | Components | import |
 | Tests | tests/test_domain.py::test_slide_in_adds_a_lead_in_linked_to_the_note_when_there_is_room; tests/test_domain.py::test_a_slide_in_never_turns_the_note_before_it_into_a_slide |

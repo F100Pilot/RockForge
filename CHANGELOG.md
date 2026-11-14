@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.12.0 beta 11] — 2026-11-14
+
 ### Correções
 
 - **Um slide de entrada já não transforma a nota anterior num slide:** quando a tab marca um slide para dentro de uma nota (como "8 /12"), a nota palhetada antes dela passava a um slide até ao alvo (o 8 deslizava até ao 12), coisa que a tab não tem. Agora a nota anterior fica como está. Quando há espaço antes da nota, o slide de entrada continua a ser uma nota curta uns trastes abaixo, agora ligada ao alvo, para o jogo mostrar um só ataque a deslizar até ele. Quando não há espaço, a nota fica simples. Reconstrói a música para ver a mudança.

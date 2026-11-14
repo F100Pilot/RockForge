@@ -532,7 +532,7 @@ In "Editar notas", saving an edit of a note sent only the techniques the popup h
 
 **Root cause:** charts.py parse_note listed its own ten techniques instead of every flag the XML carries; the popup's save built techniques from its checkboxes alone; _apply_note_overrides replaced a hit note's techniques with the edit's, losing those the viewer can never see (let ring).
 
-**Fixes:** [FIX-0412](../FIX_LOG.md#fix-0412) (unreleased)
+**Fixes:** [FIX-0412](../FIX_LOG.md#fix-0412) (0.12.0-beta.11)
 
 **Verified:** _pending_ (by _pending_)
 
@@ -573,7 +573,7 @@ A note moved to another string or fret in "Editar notas", then "Aplicar e recons
 
 **Root cause:** applyAll sent noteOverridesByKind raw, unlike fhpForRebuild/toneChangesShown/sectionsForRebuild; noteMoveTarget snapped to the nearest grid point on any sideways movement.
 
-**Fixes:** [FIX-0413](../FIX_LOG.md#fix-0413) (unreleased)
+**Fixes:** [FIX-0413](../FIX_LOG.md#fix-0413) (0.12.0-beta.11)
 
 **Verified:** _pending_ (by _pending_)
 

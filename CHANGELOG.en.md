@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.12.0 beta 11] — 2026-11-14
+
 ### Fixes
 
 - **A slide into a note no longer turns the note before it into a slide:** when the tab marks a slide into a note (like "8 /12"), the picked note before it became a slide up to that note (the 8 slid to the 12), which the tab does not have. The note before is now left as it is. When there is room before the note, the slide-in is still a short note a few frets lower, now linked to the note, so the game shows one attack sliding onto it. When there is no room, the note stays plain. Rebuild the song to see the change.

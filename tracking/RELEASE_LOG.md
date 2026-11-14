@@ -4,6 +4,31 @@
 
 Every version, newest first. What a version fixed and the bugs it still carried come from the bug and fix registers. Process: [docs/RELEASE_PROCESS.md](../docs/RELEASE_PROCESS.md).
 
+## 0.12.0-beta.11
+
+| | |
+|---|---|
+| Status | Beta |
+| Created | 2026-11-14 |
+| Published | _pending_ |
+| Commit | _pending_ |
+| Build | GitHub Actions release workflow |
+| Artifacts | — |
+| Tests | CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow |
+| Approved by | the maintainer (asked for the release) |
+
+**Goal:** Fixes: a slide into a note no longer turns the note before it into a slide (issue #29); a moved note no longer leaves the old one behind; an edited note keeps its tremolo/pinch harmonic
+
+**Bugs fixed:** 
+
+- [BUG-0413](bugs/editor.md#bug-0413) Editing a note in the viewer dropped its tremolo, pinch harmonic and let ring
+- [BUG-0414](bugs/editor.md#bug-0414) Moving a note in the note editor left the old note and put the new one at its time from before a sync correction
+- [BUG-0415](bugs/import.md#bug-0415) A slide into a note turned the picked note before it into a slide the tab does not have
+
+**Known bugs it carried:** —
+
+**Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
+
 ## 0.12.0-beta.10
 
 | | |

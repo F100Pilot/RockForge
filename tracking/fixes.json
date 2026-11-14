@@ -10384,7 +10384,7 @@
       "commits": [
         "497f254"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.11",
       "tests": [
         "tests/test_gp_pipeline.py::test_an_edit_keeps_the_techniques_the_viewer_never_sees",
         "tests/test_gp_pipeline.py::test_every_technique_reaches_the_note_editor_or_is_kept_by_the_build",
@@ -10413,7 +10413,7 @@
       "commits": [
         "3e103a5"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.11",
       "tests": [],
       "manual_checks": [
         "Playwright on a live server with the example project: Início +1 s and a note moved to another string, a real rebuild — with the old app.js 113 notes, the old note left and the new one at 5 s; with the fix 112, the old gone, the new one at 6 s",
@@ -10439,7 +10439,7 @@
       "commits": [
         "f19fd3f"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.11",
       "tests": [
         "tests/test_domain.py::test_slide_in_adds_a_lead_in_linked_to_the_note_when_there_is_room",
         "tests/test_domain.py::test_a_slide_in_never_turns_the_note_before_it_into_a_slide"
