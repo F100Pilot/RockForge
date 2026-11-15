@@ -1953,5 +1953,10 @@
   "Reconstruir": "Rebuild",
   "o cursor está antes do 1.º compasso": "the cursor is before bar 1",
   "só mudaram de andamento compassos inseridos aqui, que o ficheiro GP não tem": "only bars inserted here changed tempo, and the GP file does not have them",
-  "{n} compasso(s) inserido(s) aqui deixado(s) de fora — o ficheiro não os tem": "{n} bar(s) inserted here left out — the file does not have them"
+  "{n} compasso(s) inserido(s) aqui deixado(s) de fora — o ficheiro não os tem": "{n} bar(s) inserted here left out — the file does not have them",
+  "Arrastar a linha de um compasso": "Dragging a bar line",
+  "em \"Arrastar\", muda o andamento dos compassos de cada lado (com Shift, move também o que vem depois)": "in \"Drag\", changes the tempo of the bars on either side (with Shift, what comes after moves too)",
+  "A linha do compasso não pode passar a correção vizinha.": "The bar line cannot pass the neighbouring correction.",
+  "Arrasta a linha do compasso para onde ele começa na gravação: os compassos de cada lado mudam de andamento. Com Shift, tudo o que vem depois anda com ela.": "Drag the bar line to where the bar starts in the recording: the bars on either side change tempo. With Shift, everything after moves with it.",
+  "Também podes arrastar a <b>linha de um compasso</b>: os compassos entre as correções vizinhas mudam de andamento (com <b>Shift</b>, tudo o que vem depois anda com ela).": "You can also drag a <b>bar line</b>: the bars between the neighbouring corrections change tempo (with <b>Shift</b>, everything after moves with it)."
 };

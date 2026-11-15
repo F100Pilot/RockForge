@@ -19,8 +19,11 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   remover um compasso, ou inserir/remover um só tempo. Tudo o que vem depois anda esse tempo e os
   compassos à volta mantêm o andamento, em vez de um compasso esticado. Pode ser feito em todas
   as pistas de uma vez. Reconstrói o projeto logo; desfaz-se com a versão anterior.
-
-## [0.12.0 beta 11] — 2026-11-14
+- **Arrastar as linhas de compasso.** No modo **Arrastar**, a linha de um compasso arrasta-se
+  para onde ele começa na gravação: os compassos entre as correções vizinhas mudam de andamento,
+  e os BPM novos aparecem ao lado da linha enquanto arrastas. Com **Shift**, tudo o que vem
+  depois anda com ela. Fica pendente como as outras correções (Ctrl+Z desfaz).
+ — 2026-11-14
 
 ### Correções
 

@@ -2264,6 +2264,7 @@ function showShortcuts() {
       [T('Ctrl+clique'), T('junta ou tira uma nota da seleção')],
       [`${k('Shift')}+${k('End')}`, T('seleciona todas as notas do cursor até ao fim (depois, em "Arrastar", arrasta uma para as mover todas)')],
       [T('Alt a arrastar'), T('move sem encaixar na grelha')],
+      [T('Arrastar a linha de um compasso'), T('em "Arrastar", muda o andamento dos compassos de cada lado (com Shift, move também o que vem depois)')],
       [T('Duplo clique'), T('em "Editar notas", insere uma nota no espaço vazio')],
       [T('Arrastar uma nota'), T('em "Editar notas", leva-a para outro tempo ou outra corda (o mesmo traste)')],
       [T('Shift+arrastar uma nota'), T('em "Editar notas", duplica a nota ou o acorde e leva a cópia')],
@@ -3638,8 +3639,9 @@ function showArr(i) {
     // can be aligned by its START in the "Alinhar compasso" mode even when no
     // note sits there (a rest, a held note from the bar before). Drawn before
     // the notes, so a note on the line still wins the click.
-    s += `<rect class="bar-hit" data-t="${b.time}" x="${x - 6}" y="28" width="12" height="${SB - 28}" fill="transparent"/>`
-      + `<rect class="bar-hit" data-t="${b.time}" x="${x}" y="30" width="30" height="16" fill="transparent"/>`;
+    const barTip = syncMode === 'drag' ? `<title>${esc(BAR_DRAG_TIP)}</title>` : '';
+    s += `<rect class="bar-hit" data-t="${b.time}" x="${x - 6}" y="28" width="12" height="${SB - 28}" fill="transparent">${barTip}</rect>`
+      + `<rect class="bar-hit" data-t="${b.time}" x="${x}" y="30" width="30" height="16" fill="transparent">${barTip}</rect>`;
     const bb = barBpm(bi);
     if (bb.eff > 0 && x - lastBpmX > 64) {
       const changed = Math.abs(bb.eff - bb.auth) >= 2;  // pending sync re-tempos this bar
@@ -6312,6 +6314,33 @@ function moveNotes(notes, grabbed, time, string) {
   showArr(currentArr);
   updatePendingChangesInfo();
 }
+// Dragging a bar line in "Arrastar" (an idea read in the Charter editor): the
+// bar's downbeat goes to `target` (display time), as a pending anchor. Plain,
+// the bars between the nearest corrections on either side stretch or shrink —
+// both ends of the chart are pinned where they show, so nothing outside them
+// moves. With moveAfter (Shift) the bar and everything after it move by the
+// difference: only the stretch before it changes tempo. Null when it would
+// fold the timeline back (past a neighbouring correction).
+function planBarLineDrag(anchors, warp, { origin, target, span, moveAfter }) {
+  const EPS = 0.05;
+  const plan = anchors.map(p => p.slice());
+  const put = (o, t) => {
+    const i = plan.findIndex(([x]) => Math.abs(x - o) < EPS);
+    if (i >= 0) plan[i] = [o, t]; else plan.push([o, t]);
+  };
+  const delta = target - warp(origin);
+  if (span) {
+    const [startO, endO] = span;
+    if (!plan.some(([o]) => o <= startO + EPS)) put(startO, warp(startO));
+    if (!plan.some(([o]) => o >= endO - EPS)) put(endO, warp(endO));
+  }
+  if (moveAfter) for (const p of plan) if (p[0] > origin + EPS) p[1] += delta;
+  put(origin, target);
+  plan.sort((a, b) => a[0] - b[0]);
+  for (let i = 1; i < plan.length; i++) if (plan[i][1] <= plan[i - 1][1] + 0.01) return null;
+  return plan;
+}
+
 // "Arrastar" is a SYNC tool: each drag is a correction of the timeline, which
 // cannot fold back on itself. Said when a drag tried, so the user knows the
 // note's place is changed in "Editar notas" instead.
@@ -10767,6 +10796,7 @@ function updateSelectionInfo() {
   let editBox = null; // "Editar notas": a press on empty staff — a box once it moves, else a seek
   let lyricDrag = null; // lyric word drag: { el, startX, index }
   let toneDrag = null; // tone-change marker drag: { el, startX, scroll, change, moved }
+  let barDrag = null; // "Arrastar" on a bar line: { origin, startX, scroll, shown, bar, plan }
   const svg = document.getElementById('tabsvg');
   const wrap = document.getElementById('tabwrap');
 
@@ -10781,7 +10811,7 @@ function updateSelectionInfo() {
   let autoScrollRAF = null;
   let lastClientX = 0, lastClientY = 0, lastAltKey = false;
 
-  function activeGesture() { return rubberBand || groupDrag || dragging || lyricDrag || toneDrag; }
+  function activeGesture() { return rubberBand || groupDrag || dragging || lyricDrag || toneDrag || barDrag; }
 
   function autoScrollStep() {
     if (!activeGesture()) { autoScrollRAF = null; return; }
@@ -10849,6 +10879,16 @@ function updateSelectionInfo() {
     const barHit = !grp && e.target.closest('.bar-hit');
     if (syncMode === 'baralign' && barHit) {
       openBarAlignPopup(parseFloat(barHit.dataset.t), e.clientX, e.clientY);
+      return;
+    }
+    if (syncMode === 'drag' && barHit) {
+      const chartT = parseFloat(barHit.dataset.t);
+      const origin = previewScale(chartT);
+      barDrag = {
+        origin, chartT, startX: e.clientX, scroll: wrap.scrollLeft,
+        shown: buildTimeWarp(syncAnchors)(origin), plan: null, moved: false,
+      };
+      svg.setPointerCapture(e.pointerId);
       return;
     }
     // "Editar notas": the handle at the end of a note's tail sets its sustain.
@@ -11116,6 +11156,21 @@ function updateSelectionInfo() {
       box.setAttribute('height', String(tabH));
       svg.appendChild(box);
     }
+    if (barDrag) {
+      const dx = clientX - barDrag.startX + wrap.scrollLeft - barDrag.scroll;
+      if (!barDrag.moved && Math.abs(dx) <= 3) return;
+      barDrag.moved = true;
+      let target = barDrag.shown + dx / tabPx;
+      // Onto the cursor or a tap marked by ear when that is the snap; the beat
+      // grid is the one being moved, so it is no target. Alt: free.
+      if (snapDiv === 'cursor' || snapDiv === 'marked') target = snapDisplay(target, altKey);
+      const plan = planBarLineDrag(syncAnchors, buildTimeWarp(syncAnchors), {
+        origin: barDrag.origin, target, span: chartSpan(currentArr), moveAfter: lastShiftKey,
+      });
+      if (plan) { barDrag.plan = plan; barDrag.target = target; }
+      drawBarDragGhost(barDrag);
+      return;
+    }
     if (toneDrag) {
       // The score scrolls under a pointer held at the edge: count that too.
       const dx = clientX - toneDrag.startX + wrap.scrollLeft - toneDrag.scroll;
@@ -11153,9 +11208,41 @@ function updateSelectionInfo() {
     const snapped = snapDisplay(origDisp + dx / tabPx, altKey);
     dragging.grp.setAttribute('transform', `translate(${(snapped - origDisp) * tabPx},0)`);
   }
+  // The bar line's ghost while it is dragged: where it goes, and the tempo the
+  // bars on either side would take there.
+  function drawBarDragGhost(bd) {
+    let line = document.getElementById('barDragGhost');
+    let label = document.getElementById('barDragLabel');
+    if (!line) {
+      line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.id = 'barDragGhost';
+      label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      label.id = 'barDragLabel';
+      svg.append(line, label);
+    }
+    const x = timeToX(bd.target != null ? bd.target : bd.shown);
+    line.setAttribute('x1', x); line.setAttribute('x2', x);
+    line.setAttribute('y1', '24'); line.setAttribute('y2', String(tabH));
+    label.setAttribute('x', x + 4); label.setAttribute('y', '20');
+    const a = arrangements[currentArr];
+    const bi = (a.bars || []).findIndex(b => Math.abs(b.time - bd.chartT) < 1e-6);
+    let txt = '';
+    if (bd.plan && bi >= 0) {
+      const { barBpm } = barTempoTable(a, buildTimeWarp(bd.plan));
+      const before = bi > 0 ? barBpm(bi - 1).eff : 0, after = barBpm(bi).eff;
+      txt = [before ? `♩${before}` : '', after ? `♩${after}` : ''].filter(Boolean).join(' | ');
+    }
+    label.textContent = txt;
+  }
+  function clearBarDragGhost() {
+    document.getElementById('barDragGhost')?.remove();
+    document.getElementById('barDragLabel')?.remove();
+  }
+  let lastShiftKey = false;
   svg.addEventListener('pointermove', e => {
+    lastShiftKey = e.shiftKey;
     handlePointerMove(e.clientX, e.clientY, e.altKey);
-    if (rubberBand || groupDrag || dragging || lyricDrag || toneDrag || susDrag || (noteMove && noteMove.moved)) startAutoScrollLoop();
+    if (rubberBand || groupDrag || dragging || lyricDrag || toneDrag || barDrag || susDrag || (noteMove && noteMove.moved)) startAutoScrollLoop();
   });
   svg.addEventListener('pointerup', e => {
     stopAutoScrollLoop();
@@ -11182,6 +11269,26 @@ function updateSelectionInfo() {
         else if (nm.group) moveNotes(nm.chord, nm.note, nm.target.time, nm.target.string);
         else moveNote(nm.note, nm.target.time, nm.target.string);
       }
+      return;
+    }
+    if (barDrag) {
+      const bd = barDrag;
+      barDrag = null;
+      clearBarDragGhost();
+      if (!bd.moved) {  // a click on the line: the ordinary seek
+        const rect = svg.getBoundingClientRect();
+        audioSeek(Math.max(0, (e.clientX - rect.left - 30) / tabPx));
+        return;
+      }
+      if (!bd.plan) {
+        toast(T('A linha do compasso não pode passar a correção vizinha.'), 'err');
+        return;
+      }
+      if (Math.abs(bd.target - bd.shown) <= 0.003) return;
+      syncAnchors.splice(0, syncAnchors.length, ...bd.plan);
+      renderAnchorsList();
+      updatePendingChangesInfo();
+      showArr(currentArr);
       return;
     }
     if (toneDrag) {
@@ -11318,6 +11425,7 @@ function updateSelectionInfo() {
     if (susDrag) { susDrag.tail?.remove(); susDrag = null; showArr(currentArr); }
     if (lyricDrag) { lyricDrag.el.removeAttribute('transform'); lyricDrag = null; }
     if (toneDrag) { toneDrag.el.removeAttribute('transform'); toneDrag = null; }
+    if (barDrag) { barDrag = null; clearBarDragGhost(); }
     if (rubberBand) { document.getElementById('selectionBox')?.remove(); rubberBand = null; }
     if (groupDrag) { groupDrag.grps.forEach(g => g.removeAttribute('transform')); groupDrag = null; }
     if (dragging) { dragging.grp.removeAttribute('transform'); dragging = null; }
@@ -11353,8 +11461,10 @@ const SYNC_MODE_BUTTONS = [
 ];
 // The key that picks mode i: 1…9, then 0 for the tenth.
 const modeKey = i => (i === 9 ? '0' : String(i + 1));
+const BAR_DRAG_TIP = T('Arrasta a linha do compasso para onde ele começa na gravação: os compassos de cada lado mudam de andamento. Com Shift, tudo o que vem depois anda com ela.');
 const MODE_HELP = {
-  drag: T('<b>Arrastar (sincronização):</b> arrasta uma nota para o instante da gravação onde ela deve tocar (encaixa no beat). Muda o <b>tempo</b>, não a nota: as notas entre duas correções esticam ou encolhem, o BPM dos compassos muda, e uma nota não passa a correção vizinha. Para mudar uma nota ou um acorde de sítio, usa <b>Editar notas</b>.'),
+  drag: T('<b>Arrastar (sincronização):</b> arrasta uma nota para o instante da gravação onde ela deve tocar (encaixa no beat). Muda o <b>tempo</b>, não a nota: as notas entre duas correções esticam ou encolhem, o BPM dos compassos muda, e uma nota não passa a correção vizinha. Para mudar uma nota ou um acorde de sítio, usa <b>Editar notas</b>.') + ' '
+    + T('Também podes arrastar a <b>linha de um compasso</b>: os compassos entre as correções vizinhas mudam de andamento (com <b>Shift</b>, tudo o que vem depois anda com ela).'),
   tap: T('<b>Marcar no cursor:</b> dá play, e quando ouvires uma nota na gravação, clica nessa nota na partitura — ela ancora na posição do cursor. Alinhar a tocar.'),
   excerpt: T('<b>Excerto (sincronização):</b> arrasta uma caixa por cima de várias notas e depois arrasta uma delas — o tempo desse trecho move-se em bloco. (Alternativa: Shift+clique numa nota e noutra para selecionar o intervalo.) Para mudar notas de sítio, usa <b>Editar notas</b>.'),
   movefrom: T('<b>Mover seguintes:</b> pausa a gravação no instante certo e clica na 1ª nota desalinhada — essa nota e TODAS as seguintes deslocam-se em bloco para o cursor. Para um trecho inteiro que entrou tarde/cedo.'),
@@ -11367,7 +11477,10 @@ const MODE_HELP = {
   null: T('Nenhum modo ativo. Clica num modo acima. <b>Dica:</b> para um desvio uniforme em todo o trecho, usa antes o <b>Andamento (BPM)</b> — não precisa de âncoras.'),
 };
 function setSyncMode(mode) {
+  const before = syncMode;
   syncMode = mode;  // null = neutral: no mode highlighted, note-drag disabled
+  // The bar lines carry the "drag me" tip only in "Arrastar": redraw on the way in or out.
+  if (before !== mode && (before === 'drag' || mode === 'drag') && arrangements.length && arrangements[currentArr]) showArr(currentArr);
   SYNC_MODE_BUTTONS.forEach(([bid, bmode]) => {
     const b = document.getElementById(bid);
     if (!b) return;
@@ -11384,6 +11497,7 @@ function setSyncMode(mode) {
   document.getElementById('modeMenuBtn')?.classList.toggle('has-mode', !!src);
   document.getElementById('tabsvg')?.classList.toggle('mode-baralign', syncMode === 'baralign');
   document.getElementById('tabsvg')?.classList.toggle('mode-editnotes', syncMode === 'editnotes');
+  document.getElementById('tabsvg')?.classList.toggle('mode-drag', syncMode === 'drag');
   const help = document.getElementById('modeHelp');
   if (help) help.innerHTML = MODE_HELP[mode] || MODE_HELP.null;
 }

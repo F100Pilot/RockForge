@@ -2047,7 +2047,26 @@ brought every note back (`/psarc-check` clean); an invented two-track GP5 with a
 on every track (both charts 24 → 23 notes, the rest a beat earlier); lyrics, sections and FHPs
 after the bar sent one bar later; no page errors. Not tried on a real tab from here.
 
-### Per-arrangement sync (`arrangement_sync`)
+### Dragging a bar line ("Arrastar", `planBarLineDrag`)
+
+Charter's beat-anchor drag (its idea only, 2026-11-15). In "Arrastar" a press on a bar line
+(`.bar-hit`, which also opens the 📏 popup in "Alinhar compasso") starts `barDrag`: a dashed
+amber ghost line (`#barDragGhost`) follows the pointer (auto-scroll counted) with the BPM the
+bars on either side would take (`#barDragLabel`, `barTempoTable` over the planned warp), and on
+release the plan becomes the pending anchors — one undo step, "Aplicar e reconstruir" as
+usual. `planBarLineDrag` (pure): the bar's downbeat (its `previewScale` origin) → the target,
+both ends of the chart pinned where they show (`chartSpan`, so a lone "Início" stays a shift),
+so only the bars between the neighbouring corrections change tempo; with Shift every anchor
+after it moves by the difference (the tail keeps its tempo); a plan that would fold the timeline
+is refused (the ghost stays at the last valid place, a toast on release). Snaps only to the
+cursor or marked taps (the beat grid is what moves); Alt free. A press without moving seeks.
+The bar lines carry a tip only in that mode (`setSyncMode` redraws on the way in/out), and the
+"?" list and the guides have the row. Browser-only; verified with Playwright on the example
+project (PT 1440 / EN 760 px): bar 5 dragged +0.5 s → bar 1 unmoved, bars 2-4 a fraction each,
+the bars after shrinking towards the end (label ♩95 | ♩102), Ctrl+Z back exactly; Shift → every
+bar from 5 on +0.5 s; a real rebuild put every bar where it was shown (0 ms), `/psarc-check`
+clean, no page errors.
+
 
 `tempo_scale` and `sync_anchor_stages` are **per-arrangement**: each chart
 (Lead/Rhythm/Combined) is parsed and drift-corrected independently, so dragging

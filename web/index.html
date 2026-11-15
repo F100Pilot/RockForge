@@ -528,6 +528,10 @@
   #barAlignPopup[hidden] { display:none; }
   #tabsvg .lyric-word.sel text { fill:#3ddcc4; font-weight:700; }
   #tabsvg.mode-baralign .bar-hit { cursor:pointer; }
+  #tabsvg.mode-drag .bar-hit { cursor:ew-resize; }
+  #tabsvg.mode-drag .bar-hit:hover { fill:rgba(242,184,75,.16); }
+  #barDragGhost { stroke:#f2b84b; stroke-width:2; stroke-dasharray:5 3; pointer-events:none; }
+  #barDragLabel { fill:#f2b84b; font-size:12px; font-weight:700; paint-order:stroke; stroke:#13161c; stroke-width:3px; pointer-events:none; }
   #tabsvg.mode-baralign .bar-hit:hover { fill:rgba(181,140,255,.18); }
   #barAlignPopup .ba-title { font-weight:700; margin-bottom:.45rem; color:var(--accent); }
   #barAlignPopup .ba-row { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; }

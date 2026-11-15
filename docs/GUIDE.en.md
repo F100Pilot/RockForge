@@ -520,7 +520,7 @@ For what is left, pick a mode in **Mode ▾** and click where the score drifts:
 | Mode | What it does |
 |---|---|
 | **Fix from here** (recommended) | Listen until the score starts to drift and click that note. Everything before it stays put; RockForge measures the recording's tempo from there on and stretches only the rest. Repeat along the song. |
-| **Drag** | Drag a note to where you hear it in the recording. It corrects the **timing**, not the note: the notes around it stretch or shrink, the bars' BPM changes and a note cannot pass the neighbouring correction. With several notes selected, they move as a block. Alt while dragging = no snap. To move a note or a chord to another place, use **Edit notes**. |
+| **Drag** | Drag a note to where you hear it in the recording. It corrects the **timing**, not the note: the notes around it stretch or shrink, the bars' BPM changes and a note cannot pass the neighbouring correction. With several notes selected, they move as a block. Alt while dragging = no snap. You can also drag a **bar line** to where the bar starts in the recording: the bars between the neighbouring corrections change tempo (the new BPMs show beside the line as you drag); with **Shift**, everything after moves with it. To move a note or a chord to another place, use **Edit notes**. |
 | **Mark** | Press play and click the note the moment you hear it: it moves to the cursor. |
 | **Excerpt** | Draw a box over a passage and correct its timing as a block. |
 | **Move following** | This note and all the following ones go to the cursor; earlier ones stay. |
@@ -942,6 +942,7 @@ the app itself.
 | Ctrl+Z · Ctrl+Shift+Z (or Ctrl+Y) | undo · redo (on any page of the project) |
 | Ctrl+C · Ctrl+V | copy the selection · paste at the cursor |
 | Alt (while dragging) | no snap |
+| Dragging a bar line | in “Drag”, changes the tempo of the bars on either side (with Shift, what comes after moves too) |
 | Shift + drag a note | in “Edit notes”: duplicates the note or chord and moves the copy |
 | Drag the end of the tail | in “Edit notes”: changes the note's length (sustain) |
 | ↑ / ↓ (Ctrl = octave) | in “Edit notes”: one fret up / down on the last clicked note |

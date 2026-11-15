@@ -524,7 +524,7 @@ Para o que sobra, escolhe um modo em **Modo ▾** e clica onde a partitura foge:
 | Modo | O que faz |
 |---|---|
 | **Corrigir daqui** (recomendado) | Ouve até a partitura começar a fugir e clica nessa nota. Fica tudo o que está antes no sítio, e o RockForge mede o andamento da gravação daí em diante e estica só o resto. Repete ao longo da música. |
-| **Arrastar** | Arrasta uma nota para onde a ouves na gravação. Acerta o **tempo**, não a nota: as notas à volta esticam ou encolhem, o BPM dos compassos muda e uma nota não passa a correção vizinha. Com várias notas selecionadas, movem-se em bloco. Alt ao arrastar = sem encaixe. Para mudar uma nota ou um acorde de sítio, usa **Editar notas**. |
+| **Arrastar** | Arrasta uma nota para onde a ouves na gravação. Acerta o **tempo**, não a nota: as notas à volta esticam ou encolhem, o BPM dos compassos muda e uma nota não passa a correção vizinha. Com várias notas selecionadas, movem-se em bloco. Alt ao arrastar = sem encaixe. Também arrasta a **linha de um compasso** para onde ele começa na gravação: os compassos entre as correções vizinhas mudam de andamento (os novos BPM aparecem ao lado da linha enquanto arrastas); com **Shift**, tudo o que vem depois anda com ela. Para mudar uma nota ou um acorde de sítio, usa **Editar notas**. |
 | **Marcar** | Dá play e clica na nota no momento em que a ouves: ela vai para o cursor. |
 | **Excerto** | Desenha uma caixa sobre um trecho e acerta o tempo dele em bloco. |
 | **Mover seguintes** | Esta nota e todas as seguintes vão para o cursor; as anteriores ficam. |
@@ -942,6 +942,7 @@ lista na própria aplicação.
 | Ctrl+Z · Ctrl+Shift+Z (ou Ctrl+Y) | desfaz · refaz (em qualquer página do projeto) |
 | Ctrl+C · Ctrl+V | copia a seleção · cola no cursor |
 | Alt (a arrastar) | sem encaixe |
+| Arrastar a linha de um compasso | em «Arrastar», muda o andamento dos compassos de cada lado (com Shift, move também o que vem depois) |
 | Shift + arrastar uma nota | em «Editar notas»: duplica a nota ou o acorde e leva a cópia |
 | Arrastar o fim da cauda | em «Editar notas»: muda a duração (sustain) da nota |
 | ↑ / ↓ (Ctrl = oitava) | em «Editar notas»: sobe / desce um traste à última nota clicada |
