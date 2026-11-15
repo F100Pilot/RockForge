@@ -185,3 +185,9 @@ Python's bytecode cache is keyed on the source's mtime (whole seconds) and size.
 that swaps `all(` for `any(` keeps the size; written back in the same second, the restored
 source still ran the MUTATED bytecode, and a later check reported the fix as not working.
 Rule: run mutation checks with `PYTHONDONTWRITEBYTECODE=1`, and delete `__pycache__` after.
+
+## 2026-11-15 — a chain that ends in `| tail` does not stop on a failed test
+`pytest ... | tail -1 && git commit ...` committed and pushed with a failing test: the pipe's
+status is tail's. Run pytest on its own and check `$?` (or `set -o pipefail`) before committing.
+And a scripted `str.replace(anchor, text)` must put the anchor back (`text + anchor`): one
+replace without it deleted the changelog's beta 11 heading.
