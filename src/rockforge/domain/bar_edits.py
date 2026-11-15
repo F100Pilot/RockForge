@@ -81,7 +81,7 @@ def bar_edit_from_stage(stage: object) -> BarEdit | None:
         value = raw.get(key, default)
         if isinstance(value, bool) or not isinstance(value, int):
             raise ValueError(f"bar edit {key} must be a whole number")
-        return value
+        return int(value)
 
     op = raw.get("op")
     if not isinstance(op, str):
