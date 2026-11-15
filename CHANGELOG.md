@@ -23,7 +23,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   para onde ele começa na gravação: os compassos entre as correções vizinhas mudam de andamento,
   e os BPM novos aparecem ao lado da linha enquanto arrastas. Com **Shift**, tudo o que vem
   depois anda com ela. Fica pendente como as outras correções (Ctrl+Z desfaz).
- — 2026-11-14
+
+## [0.12.0 beta 11] — 2026-11-14
 
 ### Correções
 

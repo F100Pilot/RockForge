@@ -23,7 +23,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
   the recording: the bars between the neighbouring corrections change tempo, and the new BPMs
   show beside the line as you drag. With **Shift**, everything after moves with it. It stays
   pending like the other corrections (Ctrl+Z undoes it).
- — 2026-11-14
+
+## [0.12.0 beta 11] — 2026-11-14
 
 ### Fixes
 
