@@ -553,6 +553,14 @@ já bater certo, mas só tu o confirmas, a ouvir.
 
 ### Mais opções
 
+- **Compassos a mais ou a menos**: quando a tab tem um compasso que a gravação não tem (uma
+  repetição a mais) ou lhe falta um. Escolhe o compasso (ou **= cursor**) e **Inserir antes**,
+  **Inserir depois** (um compasso vazio igual a esse) ou **Remover compasso** (sai com as notas
+  que tiver); **Tempo** faz o mesmo com um só tempo do compasso (um 5/4 escrito como 4/4). Tudo
+  o que vem depois anda exatamente esse tempo e os compassos à volta mantêm o andamento. Com
+  **Em todas as pistas**, todas recebem o mesmo compasso. O projeto é reconstruído logo, com as
+  outras alterações pendentes (edições de notas, secções, tons e letra andam com a música); para
+  desfazer, abre a versão anterior. A partir dali a numeração dos compassos muda.
 - **Silêncio inicial**: empurra música e notas para a frente.
 - **Fim da música**: o segundo da gravação em que o jogo acaba a música. Vazio, a música vai até
   ao fim da gravação, mesmo que a pista acabe antes (um final só de outras guitarras, um fade);

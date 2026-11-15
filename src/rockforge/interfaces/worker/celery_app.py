@@ -301,10 +301,12 @@ def generate_cdlc(job_id: str) -> None:
                     GenerateFromGpUseCase,
                     GpJobSpec,
                     NoteOverride,
+                    SyncStage,
                     track_merges,
                 )
                 from rockforge.domain.arrangement import ArrangementKind, Section, ToneChange
                 from rockforge.domain.arrangement import SongMetadata as Meta
+                from rockforge.domain.bar_edits import bar_edit_from_stage
                 from rockforge.domain.hand import HandPosition
                 from rockforge.domain.music import BASS_REFERENCES, BendPoint, Technique
                 from rockforge.infrastructure.packaging.gear.gear_catalogue import (
@@ -312,10 +314,15 @@ def generate_cdlc(job_id: str) -> None:
                 )
                 from rockforge.infrastructure.rsxml.vocals import events_from_dicts
 
-                def _stages(raw: Any) -> list[list[tuple[float, float]]]:
-                    return [
-                        [(float(a[0]), float(a[1])) for a in stage] for stage in (raw or [])
-                    ]
+                def _stages(raw: Any) -> list[SyncStage]:
+                    # A stage is a round of anchors or a bar/beat inserted or
+                    # removed (a {"bar_edit": ...} object), in the order made.
+                    out: list[SyncStage] = []
+                    for stage in raw or []:
+                        edit = bar_edit_from_stage(stage)
+                        out.append(edit if edit is not None
+                                   else [(float(a[0]), float(a[1])) for a in stage])
+                    return out
 
                 # The recording without one instrument (a backing track): the
                 # other stems of its separation, mixed, are the song's audio, and

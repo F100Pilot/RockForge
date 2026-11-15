@@ -548,6 +548,14 @@ it, by ear.
 
 ### More options
 
+- **Bars too many or too few**: when the tab has a bar the recording does not (a repeat too
+  many) or lacks one. Pick the bar (or **= cursor**) and **Insert before**, **Insert after** (an
+  empty bar like that one) or **Remove bar** (it goes with any notes in it); **Beat** does the
+  same with a single beat of the bar (a 5/4 written as 4/4). Everything after moves by exactly
+  that much and the bars around keep their tempo. With **On every track**, they all get the
+  same bar. The project is rebuilt straight away, with the other pending changes (note edits,
+  sections, tones and lyrics move with the music); to undo, open the previous version. From
+  there on the bar numbers change.
 - **Intro silence**: pushes music and notes later.
 - **Song end**: the second of the recording where the game ends the song. Empty, the song runs
   to the end of the recording even if the chart stops earlier (an ending of other guitars only,

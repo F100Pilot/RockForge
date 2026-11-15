@@ -2005,6 +2005,48 @@ rubber-band drag at the right edge reaches and selects a note far outside the
 initial view) — no pytest coverage (pure `web/app.js`, same category as the
 other browser-only interaction fixes in `TESTING.md`).
 
+### Bars or beats inserted/removed ("Compassos a mais ou a menos", `domain/bar_edits.py`)
+
+Read in the Charter editor's beat-grid tools (2026-11-15, its idea only). A tab with a bar
+the recording lacks (a repeat too many) or missing one could only be fixed by stretching time,
+which gave the bar beside the whole difference. Now the GRID changes: `BarEdit(op, bar, beat,
+count)` — `insert_bar` after bar N (0 = before bar 1) copies that bar's beats, `remove_bar`
+takes bar N out with its notes, `insert_beat`/`remove_beat` the same for one beat of a bar
+(removing a downbeat makes the next beat the downbeat) — and `edit_grid` returns the new grid
+(downbeats renumbered from the first) plus `GridStep`s whose `at`/`end`/`drops` say how every
+other time moves (`EDGE_S` 1 ms: a note on the line moves with the bar after it; a sustain
+ending exactly on an insertion point is not stretched, one ringing past it rings through; a
+sustain into a removed stretch is cut at its start). **An edit is MUSICAL and is stored as a
+STAGE of the chart's sync**: `sync_anchor_stages` holds anchor rounds or `{"bar_edit": {...}}`
+(`SyncStage`, `bar_edit_from_stage`), applied in order by `gp_pipeline._apply_bar_edit` (notes,
+lyric notes and lines, sections — a removed bar's section yields to the next), so anchor rounds
+before it are in the old timeline and those after in the new one, and `_remap_committed_anchors`
+leaves it as it is (a linear tempo map moves it with its bar). `RebuildIn.bar_edits` ({chart:
+[BarEditIn]}) appends after every anchor round of that rebuild, per chart via `_arr_entry`;
+`_copy_stage` copies both kinds (`list()` of a dict kept only its key); an edit the build cannot
+apply is an IngestionError naming the chart. **The viewer rebuilds at once** (no pending
+preview: every display map would need the edit composed in): card `#barEditCard` in
+Sincronização → Mais opções (bar, "= cursor", how many, Inserir antes/depois, Remover compasso,
+beat select, Inserir tempo depois/Remover tempo, "Em todas as pistas"), a confirm naming the
+notes lost, then `applyAll({barEdits, barMaps})`. `web/bar-edits.js` is the same algorithm
+(`BarEdits.editGrid`/`timeMap`, run under Node by `tests/web/bar-edits.test.js` on the Python
+tests' cases): planned on each chart's grid as shown (`chartShownGrid`, from
+`ArrangementOut.beat_measures`), its map is applied by `chartDisplayTime(idx, t, end)` while
+`rebuildBarMaps` is set — so note overrides, FHPs (both dropped inside a removed stretch), tone
+changes and edited sections go where the bar moves them — and to the lyric rows that follow
+the chart (`lyricsAfterBarEdits`). Numbering: `ArrangementOut.source_bars` (`source_bars`: the
+score bar each built bar came from, None for an inserted one) renumbers the estimated bars and
+maps the GP tempo export, which leaves inserted bars out; merge bars stay the original score's.
+Guarded by `test_bar_edits.py` (grids, the time rules, the pipeline, two real builds of the
+example GP5 — an insert between two anchor rounds and a removal — mutation-checked),
+`test_bars_inserted_or_removed_are_stored_as_rounds_of_the_charts_sync` and
+`test_the_viewer_learns_which_score_bar_each_built_bar_came_from`; with Playwright and real
+rebuilds (PT 1440 / EN 760 px): the example project 16 → 17 bars with every note after bar 4
+one bar later and a pending fret edit landing on its moved note, removing the inserted bar
+brought every note back (`/psarc-check` clean); an invented two-track GP5 with a beat removed
+on every track (both charts 24 → 23 notes, the rest a beat earlier); lyrics, sections and FHPs
+after the bar sent one bar later; no page errors. Not tried on a real tab from here.
+
 ### Per-arrangement sync (`arrangement_sync`)
 
 `tempo_scale` and `sync_anchor_stages` are **per-arrangement**: each chart

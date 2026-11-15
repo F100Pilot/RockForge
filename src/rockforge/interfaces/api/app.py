@@ -463,6 +463,7 @@ def _check_imported_params(params: dict[str, object]) -> None:
     belongs (``"offset_s": "abc"``) was stored and then broke GET /jobs, i.e.
     the whole home page, until that project was deleted. 422 naming the key."""
     from rockforge.application.gp_pipeline import MIN_OFFSET_S
+    from rockforge.domain.bar_edits import bar_edit_from_stage
 
     def bad(key: str, what: str) -> HTTPException:
         return HTTPException(422, i18n.tr(f"{key}: tem de ser {what}", f"{key}: must be {what}"))
@@ -470,8 +471,15 @@ def _check_imported_params(params: dict[str, object]) -> None:
     def number(v: object) -> bool:
         return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
 
+    def bar_edit_ok(stage: object) -> bool:
+        try:
+            return bar_edit_from_stage(stage) is not None
+        except ValueError:
+            return False
+
     def anchors_ok(stages: object) -> bool:
         return isinstance(stages, list) and all(
+            bar_edit_ok(stage) if isinstance(stage, dict) else
             isinstance(stage, list) and all(
                 isinstance(pt, list) and len(pt) == 2 and all(number(x) for x in pt)
                 for pt in stage)
@@ -509,7 +517,7 @@ def _check_imported_params(params: dict[str, object]) -> None:
     if params.get("bass_reference") not in (None, "auto", "a220", "a440"):
         raise bad("bass_reference", "auto, a220 ou a440")
     if "sync_anchor_stages" in params and not anchors_ok(params["sync_anchor_stages"]):
-        raise bad("sync_anchor_stages", "rondas de pares [tempo, tempo]")
+        raise bad("sync_anchor_stages", "rondas de pares [tempo, tempo] ou compassos editados")
     per_chart = params.get("arrangement_sync")
     for kind, own in (per_chart.items() if isinstance(per_chart, dict) else ()):
         scale = own.get("tempo_scale", 1.0) if isinstance(own, dict) else None

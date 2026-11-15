@@ -5,7 +5,7 @@
 // to inline event-handler attributes and to each other in load order.
 module.exports = [
   {
-    files: ["web/app.js", "web/highway3d.js", "web/i18n.js", "web/i18n-en.js", "web/practice-core.js", "web/practice-worklet.js", "web/stretch-worklet.js"],
+    files: ["web/app.js", "web/highway3d.js", "web/i18n.js", "web/i18n-en.js", "web/practice-core.js", "web/practice-worklet.js", "web/stretch-worklet.js", "web/bar-edits.js"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "script",
@@ -41,6 +41,7 @@ module.exports = [
         PracticeCore: "readonly",
         // web/stretch-worklet.js, in the audio worklet
         StretchCore: "readonly",
+        BarEdits: "readonly",
         requestAnimationFrame: "readonly",
         cancelAnimationFrame: "readonly",
         setInterval: "readonly",

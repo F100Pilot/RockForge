@@ -120,6 +120,16 @@ def test_the_worklet_that_slows_down_without_lowering_the_pitch_is_served(
     assert "registerProcessor('rf-stretch'" in r.text
 
 
+def test_the_bar_edit_planner_is_served_and_loaded_before_app_js(client: TestClient) -> None:
+    """"Compassos a mais ou a menos" plans the edit with web/bar-edits.js, which
+    app.js reads as a global: it is served and the page loads it first."""
+    r = client.get("/bar-edits.js")
+    assert r.status_code == 200 and "javascript" in r.headers["content-type"]
+    assert "root.BarEdits" in r.text
+    page = client.get("/").text
+    assert page.index("/bar-edits.js") < page.index("/app.js")
+
+
 def test_the_3d_highway_and_its_three_js_are_served(client: TestClient) -> None:
     """Partitura → "Pista 3D": highway3d.js loads the vendored three.js on first
     use, so both have to be served (and cache-busted like app.js)."""
@@ -2009,6 +2019,79 @@ def test_tempo_change_reexpresses_committed_anchors_in_the_new_timeline(
     # phi(3.0) = (3.0-2.0)*1.5 + 2.0 = 3.5 ; phi(3.5) = (3.5-2.0)*1.5 + 2.0 = 4.25
     assert len(got) == 1 and len(got[0]) == 1
     assert got[0][0] == pytest.approx([3.5, 4.25])
+
+
+def test_bars_inserted_or_removed_are_stored_as_rounds_of_the_charts_sync(
+    client: TestClient, tmp_path
+) -> None:
+    """"Compassos a mais ou a menos": a bar edit is kept as a stage of the chart's
+    sync, after the anchors of the same rebuild (it was planned on the timeline
+    they leave), named by bar so a later tempo change leaves it as it is; a
+    broken one is refused at the rebuild and in an imported sync."""
+    job = _gp_job(client, tmp_path)
+    edit = {"op": "insert_bar", "bar": 2, "beat": 1, "count": 1}
+    once = client.post(f"/jobs/{job['id']}/rebuild", json={
+        "arrangement": "Lead", "sync_anchors": [[3.0, 3.5]],
+        "bar_edits": {"Lead": [edit], "Rhythm": [{"op": "remove_bar", "bar": 4}]},
+    })
+    assert once.status_code == 202, once.text
+    assert _stages(client, once.json()["id"]) == [[[3.0, 3.5]], {"bar_edit": edit}]
+    assert _stages(client, once.json()["id"], "Rhythm") == [
+        {"bar_edit": {"op": "remove_bar", "bar": 4, "beat": 1, "count": 1}}]
+    twice = client.post(f"/jobs/{once.json()['id']}/rebuild",
+                        json={"arrangement": "Lead", "tempo_scale": 1.5}).json()
+    got = _stages(client, twice["id"])
+    assert got[0][0] == pytest.approx([3.5, 4.25]) and got[1] == {"bar_edit": edit}
+    for bad in ({"op": "nope", "bar": 1}, {"op": "insert_bar", "bar": -1},
+                {"op": "insert_bar", "bar": 1, "count": 17},
+                {"op": "remove_beat", "bar": 1, "beat": 0}):
+        r = client.post(f"/jobs/{job['id']}/rebuild", json={"bar_edits": {"Lead": [bad]}})
+        assert r.status_code == 422, bad
+    assert client.post(f"/jobs/{job['id']}/rebuild",
+                       json={"bar_edits": {"Solo": [edit]}}).status_code == 422
+    state = client.get(f"/jobs/{twice['id']}/sync-state").json()
+    assert client.post(f"/jobs/{job['id']}/import-sync", json=state).status_code == 202
+    assert state["sync"]["arrangement_sync"]["Lead"]["sync_anchor_stages"][1] == {"bar_edit": edit}
+    broken = {**state, "sync": {**state["sync"], "arrangement_sync": {"Lead": {
+        "tempo_scale": 1.0, "sync_anchor_stages": [{"bar_edit": {"op": "remove_bar", "bar": 0}}]}}}}
+    assert client.post(f"/jobs/{job['id']}/import-sync", json=broken).status_code == 422
+
+
+def test_the_viewer_learns_which_score_bar_each_built_bar_came_from(
+    client: TestClient, tmp_path
+) -> None:
+    """After a bar was inserted the numbers move: /arrangements says where each
+    built bar came from (for the GP tempo export) and renumbers the converter's
+    estimated bars, and gives each beat's measure (the grid an edit is planned on)."""
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.domain.arrangement import Arrangement, ArrangementKind, SongMetadata
+    from rockforge.domain.music import Beat, TabNote, TempoMap, Tuning
+    from rockforge.infrastructure.db.models import JobStatus
+    from rockforge.infrastructure.rsxml.writer import write_arrangement_xml
+
+    job = _gp_job(client, tmp_path)
+    bundle = app_module.settings.work_dir / job["id"] / "bundle"
+    beats = tuple(Beat(time=0.5 * i, measure=(i // 2 + 1) if i % 2 == 0 else -1) for i in range(9))
+    write_arrangement_xml(Arrangement(
+        kind=ArrangementKind.COMBINED,
+        metadata=SongMetadata(title="T", artist="A", song_length=5.0),
+        tuning=Tuning(), notes=[TabNote(string=0, fret=3, time=1.0, sustain=0.2)],
+        tempo_map=TempoMap(beats=beats, average_bpm=120.0),
+    ), bundle / "arrangement_combined.xml")
+    with app_module._session_factory() as session:
+        db_job = session.get(app_module.Job, job["id"])
+        db_job.status = JobStatus.COMPLETED
+        db_job.bundle_dir = str(bundle)
+        db_job.params = {**db_job.params, "estimated_bars": {"0": [2, 3]}, "arrangement_sync": {
+            "Combined": {"tempo_scale": 1.0, "sync_anchor_stages": [
+                [[1.0, 1.1]],
+                {"bar_edit": {"op": "insert_bar", "bar": 1, "beat": 1, "count": 1}}]}}}
+        session.commit()
+    (arr,) = client.get(f"/jobs/{job['id']}/arrangements").json()
+    assert [b["measure"] for b in arr["bars"]] == [1, 2, 3, 4]
+    assert arr["source_bars"] == [1, None, 2, 3]
+    assert arr["estimated_bars"] == [3, 4]
+    assert arr["beat_measures"] == [1, -1, 2, -1, 3, -1, 4, -1, 5]
 
 
 def test_committed_anchors_untouched_when_the_timeline_does_not_change(

@@ -14,6 +14,11 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 - **A filter on playback**: in the same place, hear only the lows, only the mids or only the
   highs of the music, with an adjustable frequency — it helps hear the beat or each note's
   attack while syncing. The idea came from the Charter editor.
+- **Bars too many or too few.** In **Sync → More options**, when the tab has a bar (or a beat)
+  the recording does not, or lacks one: insert an empty bar, remove a bar, or insert/remove a
+  single beat. Everything after moves by that much and the bars around keep their tempo, instead
+  of one stretched bar. It can be done on every track at once. It rebuilds the project straight
+  away; undo it with the previous version.
 
 ## [0.12.0 beta 11] — 2026-11-14
 

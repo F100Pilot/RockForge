@@ -45,7 +45,7 @@ def index() -> str:
 # stretch-worklet.js (slowed playback that keeps the pitch, loaded the same way).
 WEB_SCRIPTS = (
     "i18n.js", "app.js", "highway3d.js", "practice-core.js", "practice-worklet.js",
-    "stretch-worklet.js",
+    "stretch-worklet.js", "bar-edits.js",
 )
 
 
@@ -134,6 +134,12 @@ def practice_worklet_js() -> FileResponse:
 def stretch_worklet_js() -> FileResponse:
     """Slowed playback that keeps the pitch (WSOLA on the audio thread)."""
     return _serve_web_js("stretch-worklet.js")
+
+
+@router.get("/bar-edits.js", include_in_schema=False)
+def bar_edits_js() -> FileResponse:
+    """A bar or beat inserted/removed, planned on the grid the score shows."""
+    return _serve_web_js("bar-edits.js")
 
 
 @router.get("/vendor/three/{name}", include_in_schema=False)

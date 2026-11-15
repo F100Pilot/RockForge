@@ -5,10 +5,12 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
+from typing import cast
 
 from fastapi import APIRouter, HTTPException
 from pydantic import ValidationError
 
+from rockforge.domain.bar_edits import BarEdit, bar_edit_from_stage, source_bars
 from rockforge.domain.chords import name_chord
 from rockforge.domain.music import BASS_STANDARD_MIDI, STANDARD_E_MIDI
 from rockforge.infrastructure.db.models import Job, JobStatus
@@ -150,10 +152,28 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
     raw_estimated = job_params.get("estimated_bars")
     estimated = raw_estimated if isinstance(raw_estimated, dict) else {}
 
-    def estimated_bars_for(kind: str) -> list[int]:
+    def bar_edits_for(kind: str) -> list[BarEdit]:
+        entry = arr_sync.get(kind) if isinstance(arr_sync, dict) else None
+        own = entry if isinstance(entry, dict) and "sync_anchor_stages" in entry else job_params
+        edits: list[BarEdit] = []
+        for stage in cast("list[object]", own.get("sync_anchor_stages") or []):
+            try:
+                edit = bar_edit_from_stage(stage)
+            except ValueError:
+                continue
+            if edit is not None:
+                edits.append(edit)
+        return edits
+
+    def estimated_bars_for(kind: str, sources: list[int | None]) -> list[int]:
         track = _track_of_kind(job_params, kind)
         bars = estimated.get(str(track)) if track is not None else None
-        return [b for b in bars if isinstance(b, int)] if isinstance(bars, list) else []
+        found = [b for b in bars if isinstance(b, int)] if isinstance(bars, list) else []
+        if not sources:
+            return found
+        # The converter numbered the score's bars: renumber them as built.
+        built = {src: i + 1 for i, src in enumerate(sources) if src is not None}
+        return [built[b] for b in found if b in built]
 
     raw_marked = job_params.get("marked_attacks")
     marked = raw_marked if isinstance(raw_marked, dict) else {}
@@ -252,6 +272,8 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
         # Every beat (downbeats + off-beats) — the snap grid the tab viewer's
         # note drag quantizes to.
         beats = [float(eb.get("time", "0")) for eb in ebeats]
+        edits = bar_edits_for(kind)
+        sources = (source_bars(len(bars), edits) or []) if edits else []
         # Song-structure markers, for the section editor — the writer always
         # appends a synthetic "noguitar" sentinel at the very end (to mark
         # where the phrase timeline ends); that one is a structural closer,
@@ -287,6 +309,8 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                 notes=all_notes,
                 bars=bars,
                 beats=beats,
+                beat_measures=[int(eb.get("measure", "-1")) for eb in ebeats],
+                source_bars=sources,
                 sections=sections,
                 note_overrides=committed_note_overrides(kind),
                 hand_positions=[
@@ -299,7 +323,7 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
                 hand_positions_edited=bool(hand_ov.get(kind)),
                 sections_edited=sections_edited,
                 sync_confirmed=kind in synced_kinds,
-                estimated_bars=estimated_bars_for(kind),
+                estimated_bars=estimated_bars_for(kind, sources),
                 marked_attacks=marked_for(kind),
                 arpeggios=arpeggios,
             )

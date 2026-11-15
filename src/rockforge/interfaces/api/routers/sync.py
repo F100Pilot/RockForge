@@ -88,6 +88,14 @@ def _sanitize_sync_state(incoming: dict[str, object]) -> dict[str, object]:
     return out
 
 
+def _copy_stage(stage: object) -> object:
+    """A stored sync stage, copied: a round of anchors (a list) or a bar/beat
+    edit (``{"bar_edit": ...}`` — ``list()`` of it would keep only its key)."""
+    if isinstance(stage, dict):
+        return {k: dict(v) if isinstance(v, dict) else v for k, v in stage.items()}
+    return list(cast("list[object]", stage))
+
+
 def _iter_floats(value: object) -> Iterator[float]:
     """Every number nested anywhere inside a decoded-JSON structure."""
     if isinstance(value, bool):
@@ -229,10 +237,8 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
                 store[kind] = {
                     "tempo_scale": params.get("tempo_scale", 1.0),
                     "sync_anchor_stages": [
-                        list(s)
-                        for s in cast(
-                            "list[list[object]]", params.get("sync_anchor_stages", [])
-                        )
+                        _copy_stage(s)
+                        for s in cast("list[object]", params.get("sync_anchor_stages", []))
                     ],
                 }
             return store[kind]
@@ -319,8 +325,10 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
                 ratio = s_new / s_old
                 if abs(ratio - 1.0) < 1e-12 and abs(new_shift - _old_shift) < 1e-12:
                     continue  # timeline unchanged for this arrangement
+                # A bar edit names bars, not times: the new timeline moves it
+                # with the bar it names, so it is kept as it is.
                 target["sync_anchor_stages"] = [
-                    [
+                    _copy_stage(stage) if isinstance(stage, dict) else [
                         [
                             (float(a) - _old_shift) * ratio + new_shift,
                             (float(b) - _old_shift) * ratio + new_shift,
@@ -338,19 +346,31 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             if payload.sync_anchors:
                 for target in _sync_targets():
                     stages = [
-                        list(s)
-                        for s in cast(
-                            "list[list[object]]", target.get("sync_anchor_stages", [])
-                        )
+                        _copy_stage(s)
+                        for s in cast("list[object]", target.get("sync_anchor_stages", []))
                     ]
                     stages.append([list(a) for a in payload.sync_anchors])
                     target["sync_anchor_stages"] = stages
         for kind, pending in other_sync.items():
             if pending.sync_anchors:
                 entry = _arr_entry(kind)
-                done = cast("list[list[object]]", entry.get("sync_anchor_stages", []))
+                done = cast("list[object]", entry.get("sync_anchor_stages", []))
                 entry["sync_anchor_stages"] = [
-                    *[list(s) for s in done], [list(a) for a in pending.sync_anchors],
+                    *[_copy_stage(s) for s in done], [list(a) for a in pending.sync_anchors],
+                ]
+        # Bars/beats inserted or removed: after every round above, in the
+        # timeline they leave — what the viewer showed when they were asked for.
+        if payload.bar_edits:
+            if original.source_type != "gp":
+                raise HTTPException(422, "bar edits only apply to Guitar Pro jobs")
+            for kind, edits in payload.bar_edits.items():
+                if not edits:
+                    continue
+                entry = _arr_entry(kind)
+                done = cast("list[object]", entry.get("sync_anchor_stages", []))
+                entry["sync_anchor_stages"] = [
+                    *[_copy_stage(s) for s in done],
+                    *[{"bar_edit": e.model_dump()} for e in edits],
                 ]
         if payload.import_mutes is not None:
             params["import_mute_techniques"] = payload.import_mutes

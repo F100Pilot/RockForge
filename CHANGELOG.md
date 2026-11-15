@@ -14,6 +14,11 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 - **Filtro na reprodução**: no mesmo sítio, ouvir só os graves, só os médios ou só os agudos
   da música, com a frequência ajustável — ajuda a ouvir o tempo ou o ataque de cada nota ao
   sincronizar. A ideia veio do editor Charter.
+- **Compassos a mais ou a menos.** Em **Sincronização → Mais opções**, quando a tab tem um
+  compasso (ou um tempo) que a gravação não tem, ou lhe falta um: inserir um compasso vazio,
+  remover um compasso, ou inserir/remover um só tempo. Tudo o que vem depois anda esse tempo e os
+  compassos à volta mantêm o andamento, em vez de um compasso esticado. Pode ser feito em todas
+  as pistas de uma vez. Reconstrói o projeto logo; desfaz-se com a versão anterior.
 
 ## [0.12.0 beta 11] — 2026-11-14
 

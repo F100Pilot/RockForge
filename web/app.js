@@ -2026,6 +2026,14 @@ const INFO = {
 <p><b>Andamento (BPM do compasso):</b> escreve o BPM que o compasso deve ter (vem preenchido com o atual) e, se quiseres, até que compasso aplicar — todos passam a esse BPM. O que vem depois <b>não muda de andamento</b>: só se desloca pela diferença, por isso cada compasso seguinte continua com o seu. O compasso fica marcado a âmbar na partitura, e "Guitar Pro com os andamentos corrigidos" (Exportar) grava-o no ficheiro.</p>
 <p>Como as outras ferramentas de sincronização, cria uma correção pendente por pista — grava com "Aplicar e reconstruir".</p>`)
   },
+  'bar-edit': {
+    title: T('Compassos a mais ou a menos'),
+    body: T(`<p>Quando a tab tem um compasso que a gravação não tem (uma repetição a mais, um compasso de silêncio que ninguém toca), ou lhe falta um, esticar o tempo não resolve: o compasso ao lado ficava com o tempo todo e os tempos dele deixavam de ser tempos. Aqui muda a grelha: <b>Inserir</b> acrescenta um compasso vazio igual ao escolhido (os mesmos tempos), <b>Remover</b> tira-o com as notas que tiver, e tudo o que vem depois anda exatamente esse tempo. Os compassos à volta mantêm o andamento.</p>
+<p><b>Tempo</b> faz o mesmo com um só tempo de um compasso: um compasso que na gravação tem um tempo a mais ou a menos do que na tab (um 5/4 escrito como 4/4).</p>
+<p><b>= cursor</b> escolhe o compasso onde está o cursor; <b>Quantos</b> repete a operação. Com <b>Em todas as pistas</b>, cada pista recebe o mesmo compasso, no sítio onde o mostra.</p>
+<p>O projeto é reconstruído logo, com as outras alterações pendentes. As edições de notas, as posições da mão, as secções, as mudanças de tom e a letra que segue a partitura andam com a música; as que estavam dentro de um compasso removido saem (ou ficam no início dele). Para desfazer, abre a versão anterior.</p>
+<p>Limites: a partir do compasso editado, a numeração muda. Os compassos escolhidos em "Juntar duas pistas" continuam a ser os da partitura original, e "Guitar Pro com os andamentos corrigidos" deixa de fora os compassos inseridos, que o ficheiro não tem.</p>`)
+  },
   'backing': {
     title: T('Gravação sem um instrumento'),
     body: T('<p>Constrói esta versão com a gravação <b>sem um dos instrumentos</b> — por exemplo sem o baixo, para o tocares tu por cima da música. O RockForge junta os outros instrumentos da mesma separação (a bateria incluída) e usa essa mistura como áudio do PSARC.</p><p>Precisa de "Separar instrumentos" (no menu Áudio ▾ da Partitura, ou o botão aqui). O título da música ganha "(sem baixo)", por isso no jogo é outra música, ao lado da que tem todos os instrumentos; instalá-la não apaga a outra.</p><p>A separação nunca é perfeita: pode ouvir-se um resto do instrumento tirado, e os outros podem soar um pouco diferentes. Aplica-se em "Aplicar e reconstruir"; "Completa" volta à gravação inteira.</p>')
@@ -3894,6 +3902,7 @@ function showArr(i) {
   updateSyncOffsetDisplay();
   refreshOneBpm();
   updateBarSyncPanel();
+  updateBarEditCard();
   fillTapBars();
   fillAutoSyncBars();
   renderAttacksCard();
@@ -4027,8 +4036,21 @@ function fhpList(a) { return (a && (fhpByKind[a.kind] || a.hand_positions)) || [
 function fhpEdited(a) { return !!(a && fhpByKind[a.kind]); }
 function fhpCovers(h, fret) { return fret <= 0 || (fret >= h.fret && fret < h.fret + h.width); }
 // Chart `idx`'s time as it shows now (and as the next build places it).
-function chartDisplayTime(idx, t) {
+function shownChartTime(idx, t) {
   return idx === currentArr ? buildTimeWarp(syncAnchors)(previewScale(t)) : arrangementDisplayTime(idx, t);
+}
+// While a rebuild that inserts/removes bars is being sent: each chart's map of
+// where its times go after them ({idx: BarEdits.timeMap}), null otherwise.
+let rebuildBarMaps = null;
+function chartDisplayTime(idx, t, end = false) {
+  const shown = shownChartTime(idx, t);
+  const m = rebuildBarMaps && rebuildBarMaps[idx];
+  return m ? (end ? m.end(shown) : m.at(shown)) : shown;
+}
+// Whether what is at `t` goes with a bar/beat being removed in that rebuild.
+function droppedByBarEdit(idx, t) {
+  const m = rebuildBarMaps && rebuildBarMaps[idx];
+  return !!m && m.drops(shownChartTime(idx, t));
 }
 function fhpForRebuild() {
   const out = {};
@@ -4036,6 +4058,7 @@ function fhpForRebuild() {
     const list = fhpByKind[a.kind];
     if (!list || !list.length) return;
     out[a.kind] = list
+      .filter(h => !droppedByBarEdit(idx, h.time))
       .map(h => ({ time: Math.max(0, Math.round(chartDisplayTime(idx, h.time) * 1000) / 1000), fret: h.fret, width: h.width }))
       .sort((x, y) => x.time - y.time);
   });
@@ -4053,10 +4076,11 @@ function noteOverridesForRebuild(applyToAll = false) {
   arrangements.forEach((a, idx) => {
     const list = noteOverridesByKind[a.kind];
     if (!list || !list.length) return;
-    const at = t => chartDisplayTime(applyToAll ? currentArr : idx, t);
-    out[a.kind] = list.map(o => {
+    const by = applyToAll ? currentArr : idx;
+    const at = (t, end = false) => chartDisplayTime(by, t, end);
+    out[a.kind] = list.filter(o => !droppedByBarEdit(by, o.time)).map(o => {
       const time = Math.max(0, ms(at(o.time)));
-      const sustain = o.sustain > 0 ? Math.max(0, ms(at(o.time + o.sustain) - at(o.time))) : o.sustain;
+      const sustain = o.sustain > 0 ? Math.max(0, ms(at(o.time + o.sustain, true) - at(o.time))) : o.sustain;
       return { ...o, time, sustain };
     });
   });
@@ -4615,6 +4639,129 @@ function updateBarSyncPanel() {
   refSel.innerHTML = others.map(o => `<option value="${o.i}">${esc(arrLabel(o.a.kind))}</option>`).join('');
   if (others.some(o => String(o.i) === prevRef)) refSel.value = prevRef;
 }
+
+// ---- "Compassos a mais ou a menos": a bar or a beat inserted or removed ----
+// The edit is musical ("after bar 12"), stored as a stage of the chart's sync
+// and resolved by the build on its grid after this rebuild's sync — the grid
+// the score shows now. The viewer plans the same edit on that grid
+// (BarEdits.editGrid, a copy of domain/bar_edits.py) to send everything else it
+// keeps in the built clock where it lands, then rebuilds at once.
+function chartShownGrid(idx) {
+  const a = arrangements[idx];
+  if (!a || !a.beats || !a.beat_measures || a.beats.length !== a.beat_measures.length) return null;
+  return a.beats.map((t, i) => ({ time: chartDisplayTime(idx, t), measure: a.beat_measures[i] }));
+}
+function barEditBeats(idx, measure) {
+  const grid = chartShownGrid(idx);
+  if (!grid) return 0;
+  const i0 = grid.findIndex(b => b.measure === measure);
+  if (i0 < 0) return 0;
+  let n = 1;
+  while (i0 + n < grid.length && grid[i0 + n].measure <= 0) n++;
+  return i0 + n < grid.length ? n : 0;  // the closing bar line is no bar
+}
+function updateBarEditCard() {
+  const card = document.getElementById('barEditCard');
+  if (!card) return;
+  if (!isGpJob() || !arrangements.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const bars = arrangements[currentArr].bars || [];
+  const barSel = document.getElementById('barEditBar');
+  const prev = barSel.value;
+  barSel.innerHTML = bars.map(b => `<option value="${b.measure}">${T('Compasso {n}', { n: b.measure })}</option>`).join('');
+  if (bars.some(b => String(b.measure) === prev)) barSel.value = prev;
+  fillBarEditBeats();
+  document.getElementById('barEditAllRow').style.display = arrangements.length > 1 ? '' : 'none';
+}
+function fillBarEditBeats() {
+  const sel = document.getElementById('barEditBeat');
+  const prev = sel.value;
+  const n = barEditBeats(currentArr, parseInt(document.getElementById('barEditBar').value, 10));
+  sel.innerHTML = Array.from({ length: n }, (_, k) => `<option value="${k + 1}">${k + 1}</option>`).join('');
+  if (prev && parseInt(prev, 10) <= n) sel.value = prev;
+}
+// {edits: {kind: [edit]}, maps: {idx: map}} for the charts it goes to, or {error}.
+function planBarEdit(edit, everyChart) {
+  const idxs = everyChart ? arrangements.map((_, i) => i) : [currentArr];
+  const edits = {}, maps = {};
+  for (const idx of idxs) {
+    const grid = chartShownGrid(idx);
+    if (!grid) return { error: T('esta versão não diz onde estão os tempos — reconstrói primeiro') };
+    let r;
+    try {
+      r = BarEdits.editGrid(grid, edit);
+    } catch {
+      return { error: T('{chart}: não dá — esse compasso ou tempo não existe ali, ou é o único', { chart: arrLabel(arrangements[idx].kind) }) };
+    }
+    edits[arrangements[idx].kind] = [edit];
+    maps[idx] = BarEdits.timeMap(r.steps);
+  }
+  return { edits, maps };
+}
+// The lyric rows (shown clock) after the bars/beats of the rebuild being sent,
+// when they follow the chart that gets them.
+function lyricsAfterBarEdits(rows) {
+  const m = rebuildBarMaps && rebuildBarMaps[lyricRefArr()];
+  if (!m || !lyricsFollowChart) return rows;
+  const origin = Math.max(0, MIN_LEAD - offsetLive) + leadInBuilt;
+  const r3 = v => Math.round(v * 1000) / 1000;
+  return rows.map(e => {
+    const start = m.at(e.time + origin);
+    return { ...e, time: Math.max(0, r3(start - origin)), length: Math.max(0, r3(m.end(e.time + e.length + origin) - start)) };
+  });
+}
+async function runBarEdit(op) {
+  if (!isGpJob() || !arrangements.length) return;
+  const bar = parseInt(document.getElementById('barEditBar').value, 10);
+  const beat = parseInt(document.getElementById('barEditBeat').value, 10) || 1;
+  const count = Math.max(1, Math.min(16, parseInt(document.getElementById('barEditCount').value, 10) || 1));
+  if (!Number.isFinite(bar)) { toast(T('escolhe um compasso'), 'err'); return; }
+  const everyChart = arrangements.length > 1 && document.getElementById('barEditAll').checked;
+  const edit = op === 'insert_before'
+    ? { op: 'insert_bar', bar: bar - 1, beat: 1, count }
+    : { op: op === 'insert_after' ? 'insert_bar' : op, bar, beat, count };
+  const plan = planBarEdit(edit, everyChart);
+  if (plan.error) { toast(plan.error, 'err'); return; }
+  // The notes a removal takes with it, on the chart on screen.
+  let lost = 0;
+  const m = plan.maps[currentArr];
+  if (m && edit.op.startsWith('remove')) {
+    lost = soundingNotes(arrangements[currentArr]).filter(n => m.drops(chartDisplayTime(currentArr, n.time))).length;
+  }
+  const where = everyChart ? T('em todas as pistas') : T('nesta pista');
+  const what = {
+    insert_bar: bar === 0 || op === 'insert_before'
+      ? T('Inserir {n} compasso(s) vazio(s) antes do compasso {bar}', { n: count, bar })
+      : T('Inserir {n} compasso(s) vazio(s) depois do compasso {bar}', { n: count, bar }),
+    remove_bar: T('Remover {n} compasso(s) a partir do compasso {bar}', { n: count, bar }),
+    insert_beat: T('Inserir {n} tempo(s) depois do tempo {beat} do compasso {bar}', { n: count, beat, bar }),
+    remove_beat: T('Remover {n} tempo(s) a partir do tempo {beat} do compasso {bar}', { n: count, beat, bar }),
+  }[edit.op];
+  const notes = lost ? ' ' + T('As {n} nota(s) que lá estão saem.', { n: lost }) : '';
+  const ok = await confirmModal(T('{what}, {where}? O projeto é reconstruído já, com as outras alterações pendentes.', { what, where }) + notes,
+    T('Reconstruir'));
+  if (!ok) return;
+  await applyAll({ barEdits: plan.edits, barMaps: plan.maps });
+}
+(function wireBarEditCard() {
+  const card = document.getElementById('barEditCard');
+  if (!card) return;
+  document.getElementById('barEditBar').addEventListener('change', fillBarEditBeats);
+  document.getElementById('barEditFromCursor').addEventListener('click', () => {
+    const a = arrangements[currentArr];
+    if (!a) return;
+    const at = currentPlayheadT + viewOrigin;
+    const bar = (a.bars || []).filter(b => chartDisplayTime(currentArr, b.time) <= at + 1e-6).pop();
+    if (!bar) { toast(T('o cursor está antes do 1.º compasso'), 'err'); return; }
+    document.getElementById('barEditBar').value = String(bar.measure);
+    fillBarEditBeats();
+  });
+  document.getElementById('barInsertBefore').addEventListener('click', () => runBarEdit('insert_before'));
+  document.getElementById('barInsertAfter').addEventListener('click', () => runBarEdit('insert_after'));
+  document.getElementById('barRemove').addEventListener('click', () => runBarEdit('remove_bar'));
+  document.getElementById('beatInsertAfter').addEventListener('click', () => runBarEdit('insert_beat'));
+  document.getElementById('beatRemove').addEventListener('click', () => runBarEdit('remove_beat'));
+})();
 
 // Pin a bar's downbeat of the current arrangement to `target` (a bundle-time
 // display position) via a single anchor — the shared primitive behind BOTH the
@@ -6346,74 +6493,82 @@ function renderAnchorsList() {
 // One rebuild per click: a double-click used to fork two new versions.
 let applyingAll = false;
 
-async function applyAll() {
+async function applyAll(opts = {}) {
   if (!selectedJob || applyingAll) return;
   applyingAll = true;
   const applyBtn = document.getElementById('applyAll');
   applyBtn.disabled = true;
   try {
-    await applyAllNow();
+    await applyAllNow(opts);
   } finally {
     applyingAll = false;
     applyBtn.disabled = false;
   }
 }
 
-async function applyAllNow() {
+// opts.barEdits ({kind: [edit]}) and opts.barMaps ({chart index: map}): bars
+// or beats inserted/removed in this rebuild, after its sync — everything else
+// sent in the built clock goes where they move it.
+async function applyAllNow(opts = {}) {
   mainSyncFollow();  // what the main chart changed must reach the others first
   lyricsFollowSync();  // the rows sent must carry every pending chart correction
   const applyToAll = document.getElementById('applyToAllChk').checked;
-  const toneSets = toneSetsForRebuild(applyToAll);
+  rebuildBarMaps = opts.barMaps || null;
   let b;
   try {
+    const toneSets = toneSetsForRebuild(applyToAll);
+    const payload = {
+      cent_offset: centOffsetLive,
+      offset_s: offsetLive,
+      lead_in_s: Math.max(0, parseFloat(document.getElementById('leadInS').value) || 0),
+      // 0 = to the recording's end (the default, also what an empty field means)
+      song_end_s: isGpJob() ? Math.max(0, parseFloat(document.getElementById('songEndS').value) || 0) : null,
+      arrangement: currentKind(),
+      tempo_scale: tempoScaleLive,
+      sync_anchors: syncAnchors.length ? syncAnchors : null,
+      apply_to_all: applyToAll,
+      // Every OTHER chart's pending sync too — before, only the chart on screen
+      // was committed and the rest was lost at the rebuild.
+      other_sync: applyToAll ? null : otherPendingSync(),
+      import_mutes: document.getElementById('muteChk').checked,
+      dynamic_difficulty: document.getElementById('ddChk').checked,
+      // Sent only when changed: null keeps it, "" is the whole recording again.
+      backing_without: isGpJob() && document.getElementById('backingSel').value !== (selectedJob.backing_without || '')
+        ? document.getElementById('backingSel').value : null,
+      // null keeps the stored rows; [] drops them, so the build reads the GP
+      // file's own lyrics again ("Voltar à letra da pauta").
+      lyrics_events: lyricsEvents.length ? lyricsAfterBarEdits(serializeLyrics()) : (lyricsBackToScore ? [] : null),
+      lyrics_follow_chart: isGpJob() ? lyricsFollowChart : null,
+      // Send the FULL current tone state for GP jobs (even when empty) so that
+      // clearing tones/changes actually persists — null would mean "keep the
+      // old value". Non-GP jobs have no tones, so send null to skip the guard.
+      tones: isGpJob() ? jobTones : null,
+      tone_base: isGpJob() ? (toneSets.song.tone_base || '') : null,
+      tone_names: isGpJob() ? toneSets.song.tone_names : null,
+      tone_changes: isGpJob() ? toneSets.song.tone_changes : null,
+      // Each chart's own set; {} = every chart uses the song's (the default).
+      arrangement_tones: isGpJob() ? toneSets.perTrack : null,
+      // Only sent once the user actually touches the section editor — untouched,
+      // null leaves each arrangement's own GP-authored sections alone (unlike
+      // tones, which never had a prior non-user-supplied default to lose).
+      section_overrides: isGpJob() ? sectionsForRebuild() : null,
+      // Genuinely per-arrangement (unlike tone_changes/sections) — sent as
+      // one dict covering every tab's pending edits from this session, same
+      // no-prior-default reasoning as tone_changes (an untouched job sends {}).
+      note_overrides: isGpJob() ? noteOverridesForRebuild(applyToAll) : null,
+      // Each chart's own FHPs, carried through its pending sync; {} = all automatic.
+      hand_positions: isGpJob() ? fhpForRebuild() : null,
+      bar_edits: opts.barEdits || null,
+    };
     b = await getJSON(`/jobs/${selectedJob.id}/rebuild`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        cent_offset: centOffsetLive,
-        offset_s: offsetLive,
-        lead_in_s: Math.max(0, parseFloat(document.getElementById('leadInS').value) || 0),
-        // 0 = to the recording's end (the default, also what an empty field means)
-        song_end_s: isGpJob() ? Math.max(0, parseFloat(document.getElementById('songEndS').value) || 0) : null,
-        arrangement: currentKind(),
-        tempo_scale: tempoScaleLive,
-        sync_anchors: syncAnchors.length ? syncAnchors : null,
-        apply_to_all: applyToAll,
-        // Every OTHER chart's pending sync too — before, only the chart on screen
-        // was committed and the rest was lost at the rebuild.
-        other_sync: applyToAll ? null : otherPendingSync(),
-        import_mutes: document.getElementById('muteChk').checked,
-        dynamic_difficulty: document.getElementById('ddChk').checked,
-        // Sent only when changed: null keeps it, "" is the whole recording again.
-        backing_without: isGpJob() && document.getElementById('backingSel').value !== (selectedJob.backing_without || '')
-          ? document.getElementById('backingSel').value : null,
-        // null keeps the stored rows; [] drops them, so the build reads the GP
-        // file's own lyrics again ("Voltar à letra da pauta").
-        lyrics_events: lyricsEvents.length ? serializeLyrics() : (lyricsBackToScore ? [] : null),
-        lyrics_follow_chart: isGpJob() ? lyricsFollowChart : null,
-        // Send the FULL current tone state for GP jobs (even when empty) so that
-        // clearing tones/changes actually persists — null would mean "keep the
-        // old value". Non-GP jobs have no tones, so send null to skip the guard.
-        tones: isGpJob() ? jobTones : null,
-        tone_base: isGpJob() ? (toneSets.song.tone_base || '') : null,
-        tone_names: isGpJob() ? toneSets.song.tone_names : null,
-        tone_changes: isGpJob() ? toneSets.song.tone_changes : null,
-        // Each chart's own set; {} = every chart uses the song's (the default).
-        arrangement_tones: isGpJob() ? toneSets.perTrack : null,
-        // Only sent once the user actually touches the section editor — untouched,
-        // null leaves each arrangement's own GP-authored sections alone (unlike
-        // tones, which never had a prior non-user-supplied default to lose).
-        section_overrides: isGpJob() ? sectionsForRebuild() : null,
-        // Genuinely per-arrangement (unlike tone_changes/sections) — sent as
-        // one dict covering every tab's pending edits from this session, same
-        // no-prior-default reasoning as tone_changes (an untouched job sends {}).
-        note_overrides: isGpJob() ? noteOverridesForRebuild(applyToAll) : null,
-        // Each chart's own FHPs, carried through its pending sync; {} = all automatic.
-        hand_positions: isGpJob() ? fhpForRebuild() : null,
-      }),
+      body: JSON.stringify(payload),
     });
   } catch (err) {
     toast(err.message || T('erro'));
     return;
+  } finally {
+    rebuildBarMaps = null;
   }
   toast(T('A reconstruir…'), 'ok');
   dropDraft(selectedJob.id);  // the new version is built with them
@@ -6563,9 +6718,17 @@ document.getElementById('exportGpBtn').addEventListener('click', async () => {
   if (!selectedJob) return;
   const a = arrangements[currentArr];
   if (!a) { toast(T('abre um arranjo primeiro')); return; }
-  const bars = retempoedBars(a);
+  // Bars inserted here are not in the file, and after one the numbers differ.
+  const src = a.source_bars || [];
+  const all = retempoedBars(a);
+  const bars = src.length
+    ? all.map(c => ({ ...c, measure: src[c.measure - 1] })).filter(c => Number.isInteger(c.measure))
+    : all;
+  const inserted = all.length - bars.length;
   if (!bars.length) {
-    toast(T('nenhum compasso mudou de andamento — não há nada para escrever no ficheiro GP'));
+    toast(inserted
+      ? T('só mudaram de andamento compassos inseridos aqui, que o ficheiro GP não tem')
+      : T('nenhum compasso mudou de andamento — não há nada para escrever no ficheiro GP'));
     return;
   }
   // The endpoint bounds BPM to (10, 400); a wild warp can push a bar outside it.
@@ -6586,6 +6749,7 @@ document.getElementById('exportGpBtn').addEventListener('click', async () => {
     const rounded = b.applied.filter(x => x.rounded).length;
     const notes = [];
     if (dropped) notes.push(T('{n} compasso(s) fora de 10-400 BPM ignorado(s)', { n: dropped }));
+    if (inserted) notes.push(T('{n} compasso(s) inserido(s) aqui deixado(s) de fora — o ficheiro não os tem', { n: inserted }));
     if (rounded) notes.push(T('{n} arredondado(s) — este formato guarda o tempo como inteiro', { n: rounded }));
     document.getElementById('exportGpInfo').innerHTML =
       T('<b>{n} compasso(s)</b> escritos em <code>{file}</code>', { n: b.applied.length, file: esc(b.filename) }) +

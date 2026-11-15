@@ -131,6 +131,17 @@ class OtherSyncIn(BaseModel):
 ChartName = Literal["Lead", "Rhythm", "Combined", "Alternate Lead", "Alternate Rhythm", "Bass"]
 
 
+class BarEditIn(BaseModel):
+    """A bar or beat inserted into a chart's grid or removed from it (see
+    ``domain.bar_edits.BarEdit``), named musically: the build resolves it on
+    the grid it reaches, after the sync sent in the same rebuild."""
+
+    op: Literal["insert_bar", "remove_bar", "insert_beat", "remove_beat"]
+    bar: int = Field(ge=0, le=10000)
+    beat: int = Field(default=1, ge=1, le=64)
+    count: int = Field(default=1, ge=1, le=16)
+
+
 class RebuildIn(BaseModel):
     """Human-review overrides for a rebuild (sync, tuning, tones, lyrics, note edits)."""
 
@@ -158,6 +169,9 @@ class RebuildIn(BaseModel):
     # tab's pending corrections — and what the "Pista principal" carries onto
     # the others — were lost. Ignored with apply_to_all.
     other_sync: dict[ChartName, OtherSyncIn] | None = None
+    # Bars/beats inserted or removed, per chart, applied after every sync round
+    # of this rebuild (they are stored as stages of that chart's sync).
+    bar_edits: dict[ChartName, Annotated[list[BarEditIn], Field(max_length=8)]] | None = None
     # GP: when False, palm mute / slap / pop / tap are stripped (plain notes).
     import_mutes: bool | None = None
     # When False, the native PSARC's SNG is a single full-chart level (no DD).
@@ -354,6 +368,12 @@ class ArrangementOut(BaseModel):
     notes: list[ArrangementNoteOut]
     bars: list[BarOut] = []  # measure downbeats for the viewer's bar numbering
     beats: list[float] = []  # ALL ebeat times (downbeats + off-beats) — the drag snap grid
+    # Each beat's measure number (-1 off a downbeat; the last downbeat is the
+    # closing bar line) — the grid a bar/beat edit is planned on in the viewer.
+    beat_measures: list[int] = []
+    # For each bar of ``bars``, the bar of the score it came from (None for one
+    # inserted here); empty when no bar was inserted or removed.
+    source_bars: list[int | None] = []
     # Named song-structure markers (GP-authored, or the in-app editor's
     # overrides), bundle-clock time — the writer's synthetic trailing
     # "noguitar" end sentinel is never included here.

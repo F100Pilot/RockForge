@@ -1587,6 +1587,31 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 </div>
                 <span id="barSyncInfo" class="meta" style="display:block;margin-top:.35rem"></span>
               </div>
+              <div class="pv-card" id="barEditCard">
+                <div class="pv-card-head">Compassos a mais ou a menos
+                  <button class="info-btn" data-info="bar-edit">ⓘ</button></div>
+                <div class="pv-card-desc">A tab tem um compasso (ou um tempo) que a gravação não tem, ou falta-lhe um? Insere-o ou remove-o: o que vem depois anda esse tempo, e os compassos à volta mantêm o andamento.</div>
+                <div class="syncctrls">
+                  <label>Compasso:
+                    <select id="barEditBar" style="width:auto"></select></label>
+                  <button type="button" id="barEditFromCursor" class="secondary">= cursor</button>
+                  <label>Quantos:
+                    <input type="number" id="barEditCount" min="1" max="16" value="1" style="width:4rem"></label>
+                </div>
+                <div class="syncctrls" style="margin-top:.4rem">
+                  <button type="button" id="barInsertBefore" class="secondary">Inserir antes</button>
+                  <button type="button" id="barInsertAfter" class="secondary">Inserir depois</button>
+                  <button type="button" id="barRemove" class="secondary">Remover compasso</button>
+                </div>
+                <div class="syncctrls" style="margin-top:.4rem">
+                  <label>Tempo:
+                    <select id="barEditBeat" style="width:auto"></select></label>
+                  <button type="button" id="beatInsertAfter" class="secondary">Inserir tempo depois</button>
+                  <button type="button" id="beatRemove" class="secondary">Remover tempo</button>
+                </div>
+                <label class="check" id="barEditAllRow" style="margin-top:.4rem"><input type="checkbox" id="barEditAll" checked> Em todas as pistas</label>
+                <span class="meta" style="display:block;margin-top:.35rem">Reconstrói logo o projeto, com as outras alterações pendentes. Para desfazer, abre a versão anterior.</span>
+              </div>
               <div class="pv-card">
                 <div class="pv-card-head">Silêncio inicial</div>
                 <div class="pv-row">
@@ -2767,6 +2792,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
 <script src="/i18n.js"></script>
 <script src="/highway3d.js"></script>
 <script src="/practice-core.js"></script>
+<script src="/bar-edits.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

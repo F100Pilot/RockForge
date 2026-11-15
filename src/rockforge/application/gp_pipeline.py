@@ -42,6 +42,7 @@ from rockforge.domain.arrangement import (
     SongMetadata,
     ToneChange,
 )
+from rockforge.domain.bar_edits import BarEdit, edit_grid
 from rockforge.domain.errors import IngestionError
 from rockforge.domain.hand import HandPosition, notes_outside
 from rockforge.domain.music import (
@@ -148,6 +149,10 @@ def suggest_tempo_scale(gp_bpm: float, detected_bpm: float) -> float:
     return gp_bpm / best
 
 
+# One stored correction round: anchors, or a bar/beat inserted or removed.
+SyncStage = list[tuple[float, float]] | BarEdit
+
+
 @dataclass(frozen=True)
 class ArrangementSync:
     """Per-arrangement chart-timing overrides (tempo + drift anchors).
@@ -162,7 +167,7 @@ class ArrangementSync:
     """
 
     tempo_scale: float = 1.0
-    sync_anchor_stages: list[list[tuple[float, float]]] = field(default_factory=list)
+    sync_anchor_stages: list[SyncStage] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -427,8 +432,10 @@ class GpJobSpec:
     # applied in order via piecewise-linear stretch/compress, so corrections
     # made in separate sessions (after reloading a completed job) compose
     # correctly instead of overwriting each other. Default for arrangements
-    # without an explicit arrangement_sync override.
-    sync_anchor_stages: list[list[tuple[float, float]]] = field(default_factory=list)
+    # without an explicit arrangement_sync override. A stage may also be a
+    # BarEdit (a bar or beat inserted/removed), applied in its place in that
+    # order, so the rounds after it are in the timeline it left.
+    sync_anchor_stages: list[SyncStage] = field(default_factory=list)
     # Per-arrangement tempo + drift overrides, keyed by ArrangementKind.value
     # ("Lead"/"Rhythm"/"Combined"). An arrangement absent here falls back to the
     # job-level tempo_scale / sync_anchor_stages above.
@@ -789,6 +796,59 @@ def _warp_parsed_track(p: ParsedGpTrack, warp: Callable[[float], float]) -> Pars
     )
 
 
+def _apply_bar_edit(
+    p: ParsedGpTrack, edit: BarEdit, chart: str, warnings: list[str],
+) -> ParsedGpTrack:
+    """A bar or beat inserted into the chart's grid, or taken out with its
+    notes; everything after it moves by exactly that length (``edit_grid``)."""
+    from rockforge.domain.music import TempoMap
+
+    try:
+        grid, steps = edit_grid(p.tempo_map.beats, edit)
+    except ValueError as exc:
+        raise IngestionError(
+            f"{chart}: cannot apply \"{edit.describe()}\" — {exc}. Go back to the "
+            "previous version, or create the project again."
+        ) from exc
+    notes, lyric_notes = list(p.notes), p.lyric_notes
+    sections, lyrics = list(p.sections), list(p.lyrics)
+    dropped = 0
+    for step in steps:
+        kept = [n for n in notes if not step.drops(n.time)]
+        dropped += len(notes) - len(kept)
+        notes = [
+            replace(n, time=step.at(n.time),
+                    sustain=max(0.0, step.end(n.time + n.sustain) - step.at(n.time)))
+            for n in kept
+        ]
+        if lyric_notes is not None:
+            lyric_notes = tuple(
+                replace(n, time=step.at(n.time), end=max(step.at(n.time), step.end(n.end)))
+                for n in lyric_notes if not step.drops(n.time)
+            )
+        sections = [GpSection(name=s.name, start_time=step.at(s.start_time)) for s in sections]
+        lyrics = [type(line)(time=step.at(line.time), text=line.text) for line in lyrics]
+    # A removed bar can bring two sections to one instant: the later one, which
+    # the music after it belongs to, stays.
+    sections = [s for i, s in enumerate(sections)
+                if i + 1 == len(sections) or sections[i + 1].start_time - s.start_time > 1e-6]
+    warnings.append(
+        f"{chart}: {edit.describe()}"
+        + (f" ({dropped} note(s) in it removed)" if dropped else "")
+    )
+    return replace(
+        p,
+        notes=apply_sustain_gap(notes),
+        tempo_map=TempoMap(
+            beats=tuple(grid), average_bpm=p.tempo_map.average_bpm,
+            beats_per_measure=p.tempo_map.beats_per_measure,
+        ),
+        sections=sections,
+        lyrics=lyrics,
+        lyric_notes=lyric_notes,
+    )
+
+
 def auto_pick_tracks(gp_path: Path) -> tuple[int | None, int | None]:
     """Heuristic track selection by name when the user does not choose.
 
@@ -956,6 +1016,9 @@ class GenerateFromGpUseCase:
                 p = self._merge_into(spec, kind, p, merge, score_shift, sync.tempo_scale,
                                      warnings)
             for stage_anchors in sync.sync_anchor_stages:
+                if isinstance(stage_anchors, BarEdit):
+                    p = _apply_bar_edit(p, stage_anchors, kind.value, warnings)
+                    continue
                 if not stage_anchors:
                     continue
                 _check_anchor_order(stage_anchors)
@@ -967,9 +1030,10 @@ class GenerateFromGpUseCase:
                     f"{kind.value}: tempo scaled by {sync.tempo_scale:.3f}× "
                     f"({1.0 / sync.tempo_scale:.1%} of the GP tempo) to match the recording"
                 )
-            points = sum(len(s) for s in sync.sync_anchor_stages)
+            rounds_only = [s for s in sync.sync_anchor_stages if not isinstance(s, BarEdit)]
+            points = sum(len(s) for s in rounds_only)
             if points:
-                rounds = sum(1 for s in sync.sync_anchor_stages if s)
+                rounds = sum(1 for s in rounds_only if s)
                 warnings.append(
                     f"{kind.value}: {points} manual drift-correction point(s) across "
                     f"{rounds} round(s) applied to the chart"
