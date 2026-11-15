@@ -6,6 +6,15 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+
+- **Slow down without changing the pitch.** On the Score, **Audio ▾ → Hear it better → Keep the
+  pitch when slowed down** (on by default): below 100 % speed the music plays slower without
+  dropping in pitch, and the cursor and the notes stay where the music is.
+- **A filter on playback**: in the same place, hear only the lows, only the mids or only the
+  highs of the music, with an adjustable frequency — it helps hear the beat or each note's
+  attack while syncing. The idea came from the Charter editor.
+
 ## [0.12.0 beta 11] — 2026-11-14
 
 ### Fixes

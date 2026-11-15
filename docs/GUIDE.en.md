@@ -244,6 +244,11 @@ They stay pending as before; Undo goes back to the built version.
     appears too: each beat green when an attack of the lane above (pick the separated drums) falls
     on it, orange when it is off, grey with no attack near, plus the count and how far ahead or
     behind the grid is;
+  - **Hear it better**: **Keep the pitch when slowed down** (on by default) — below 100 % speed
+    the music plays slower without dropping in pitch, so you can check the notes slowly; off, it
+    slows down like a tape. And a filter on the music only (not the ticks): **Lows only (kick,
+    bass)**, **Mids only (guitar, vocals)** or **Highs only (cymbals, picking)**, with an
+    adjustable **Frequency** — the lows help you hear the beat, the highs each pick attack;
   - **Audio source**: the full mix; **«track» (synthesized)**, that track's notes played alone
     and clean, good for checking each track's sync; **Vocals (synthesized)**, the melody the GP
     lyrics are sung on; and, after **Separate instruments** (Demucs, takes minutes), the

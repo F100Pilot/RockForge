@@ -41,8 +41,12 @@ def index() -> str:
 # The web UI's own scripts, served by name (never a client path): app.js (the UI),
 # highway3d.js (the 3D note highway, which loads three.js on first use) and the
 # practice mode's practice-core.js (on the page and in the audio worklet) and
-# practice-worklet.js (the worklet itself, loaded by app.js, not by a tag).
-WEB_SCRIPTS = ("i18n.js", "app.js", "highway3d.js", "practice-core.js", "practice-worklet.js")
+# practice-worklet.js (the worklet itself, loaded by app.js, not by a tag), and
+# stretch-worklet.js (slowed playback that keeps the pitch, loaded the same way).
+WEB_SCRIPTS = (
+    "i18n.js", "app.js", "highway3d.js", "practice-core.js", "practice-worklet.js",
+    "stretch-worklet.js",
+)
 
 
 # three.js, vendored so the app works offline: the module and the core it imports.
@@ -124,6 +128,12 @@ def practice_core_js() -> FileResponse:
 def practice_worklet_js() -> FileResponse:
     """Practice mode's AudioWorklet (reads the guitar on the audio thread)."""
     return _serve_web_js("practice-worklet.js")
+
+
+@router.get("/stretch-worklet.js", include_in_schema=False)
+def stretch_worklet_js() -> FileResponse:
+    """Slowed playback that keeps the pitch (WSOLA on the audio thread)."""
+    return _serve_web_js("stretch-worklet.js")
 
 
 @router.get("/vendor/three/{name}", include_in_schema=False)

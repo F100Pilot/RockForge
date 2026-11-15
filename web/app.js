@@ -1955,6 +1955,12 @@ const INFO = {
       T('<p><strong>… (sintetizada)</strong> — uma referência limpa das notas de cada arranjo (Lead/Rhythm), gerada a partir do próprio ficheiro. É uma guitarra <em>isolada</em> e limpa dessa faixa, útil para conferir o sync de cada arranjo por ouvido. Não precisa do Demucs e está sempre disponível. Reflete a sincronização pendente no momento em que a escolhes — volta a escolhê-la para atualizar depois de mais edições.</p>') +
       T('<p><strong>Stems separados</strong> (botão "Separar instrumentos") — usa o Demucs para separar a gravação real por instrumento (guitarra, baixo, voz, piano, outros; a bateria é descartada). Sola a <strong>guitarra</strong> para ouvir melhor as notas reais. <em>Limite honesto:</em> o Demucs separa por <em>tipo</em> de instrumento — a faixa "guitarra" é <strong>todas as guitarras misturadas</strong>; não é possível separar a Lead da Rhythm a partir da gravação. Requer o extra <code>[ml]</code> e demora alguns minutos.</p>')
   },
+  'listen-help': {
+    title: T('Ouvir melhor'),
+    body: T('<p><strong>Ao abrandar, manter o tom</strong>: com a velocidade abaixo de 100%, a música toca mais devagar sem ficar mais grave, para ouvir as notas como elas são enquanto sincronizas ou marcas a ouvir. O som é esticado no momento (WSOLA), por isso pode soar um pouco "aos soluços" nos ataques, mais a 50% ou menos. Desligado, abranda como antes, com o tom a descer.</p>') +
+      T('<p><strong>Filtro</strong>: deixa passar só uma parte das frequências da música. <em>Só os graves</em> destaca o bombo e o baixo, que marcam o tempo; <em>só os médios</em>, a guitarra e a voz; <em>só os agudos</em>, os pratos e o ataque da palhetada. Ajusta a frequência de corte com o deslizador. As notas da partitura, o metrónomo e os tiques não são filtrados. Não precisa da separação de instrumentos, mas separa muito menos: é um filtro, não um instrumento isolado.</p>') +
+      T('<p>Ideias vindas do editor Charter.</p>')
+  },
   'tone-preview': {
     title: T('Testar tom na partitura'),
     body: T('<p>Ouve os <strong>tons que criaste</strong> aplicados às notas (no tique por nota e na fonte "sintetizada"), para comparares o <em>carácter</em> — limpo, crunch, distorcido — sem teres de entrar no Rocksmith de cada vez que ajustas uma definição.</p>') +
@@ -2352,6 +2358,19 @@ let playStartOffset = 0;     // buffer offset (s) the current source started at
 let playing = false;         // buffer-backend transport state
 let pausedAt = 0;            // buffer-backend position (s) while paused/stopped
 let playbackRate = 1.0;      // playback speed (<1 slows down; lowers pitch on the buffer source)
+// Slowed down, the music keeps its pitch (stretch-worklet.js: WSOLA on the audio
+// thread) unless this is off; the buffer source at a lower rate lowers the pitch.
+let keepPitch = (() => { try { return localStorage.getItem('rf-keep-pitch') !== '0'; } catch { return true; } })();
+let stretch = null;          // {ctx, ok, failed, keeper, buf, id, loading} for the worklet
+let stretchSeq = 0;
+// A frequency filter on the music only ("Ouvir melhor"): the notes, ticks and
+// metronome go straight to the output. Two biquads in a row (24 dB/octave), so
+// what is cut is really out of the way.
+let playFilterType = '';
+let playFilterHz = 0;
+let playFilterNodes = [];
+const FILTER_MIN_HZ = 40, FILTER_MAX_HZ = 10000;
+const FILTER_DEFAULT_HZ = { lowpass: 250, bandpass: 1000, highpass: 3000 };
 // A buffer source stopped/started mid-waveform (every seek/pause) is a hard
 // amplitude discontinuity — an audible click. Scrubbing back and forth stacks
 // those clicks into "noise". A ~6 ms gain ramp at start (fade in) and before
@@ -11362,6 +11381,7 @@ let metroGain = 1.0;
 document.getElementById('playbackSpeed')?.addEventListener('change', e => {
   const now = audioTime();          // capture position under the OLD rate first
   playbackRate = parseFloat(e.target.value);
+  if (keepPitch && playbackRate !== 1 && playBuffer) prepareStretch();
   if (audioIsPlaying()) audioSeek(now);  // restart the source at the new rate
   else { const au = document.getElementById('syncAudio'); if (au) au.playbackRate = playbackRate; }
 });
@@ -12933,12 +12953,19 @@ function audioPlay() {
   audioCtx.resume();
   if (!playGain) {
     playGain = audioCtx.createGain();
-    playGain.connect(audioCtx.destination);
     const vol = parseFloat(document.getElementById('musicVolume')?.value || '1');
     playGain.gain.value = vol;
+    routeMusic();
   }
   if (playBuffer) {
     if (playing) return;
+    if (wantStretch()) {
+      if (stretchReadyNow()) { playStretched(); startSyncLoop(); updatePlayBtn(); return; }
+      // Not loaded yet: play as before, and move to the stretched sound once it is.
+      prepareStretch().then(ok => {
+        if (ok && playing && playSource && !playSource.stretched && wantStretch()) audioSeek(audioTime());
+      });
+    }
     playSource = audioCtx.createBufferSource();
     playSource.buffer = playBuffer;
     playSource.playbackRate.value = playbackRate;
@@ -12962,6 +12989,138 @@ function audioPlay() {
   startSyncLoop();
   updatePlayBtn();
 }
+
+// ── Slowed playback that keeps the pitch ────────────────────────────────────
+function wantStretch() {
+  return keepPitch && playbackRate !== 1 && !!playBuffer && !!audioCtx && !!audioCtx.audioWorklet;
+}
+
+function stretchReadyNow() {
+  return !!stretch && stretch.ok && stretch.ctx === audioCtx && stretch.buf === playBuffer;
+}
+
+// Loads the worklet once per AudioContext and hands it the decoded recording
+// once per buffer (a copy, transferred). Resolves false where it cannot run.
+async function prepareStretch() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!audioCtx.audioWorklet) return false;
+  if (!stretch || stretch.ctx !== audioCtx) {
+    const st = { ctx: audioCtx, ok: false, failed: false, keeper: null, buf: null, id: 0 };
+    stretch = st;
+    st.loading = audioCtx.audioWorklet.addModule('/stretch-worklet.js').then(() => {
+      // The keeper holds the recordings for the nodes of each play; connected
+      // (silent) so it keeps running.
+      const keeper = new AudioWorkletNode(st.ctx, 'rf-stretch', {
+        numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1], processorOptions: { keeper: true },
+      });
+      const mute = st.ctx.createGain(); mute.gain.value = 0;
+      keeper.connect(mute).connect(st.ctx.destination);
+      st.keeper = keeper;
+      st.ok = true;
+    }).catch(err => { st.failed = true; console.warn('stretch worklet', err); });
+  }
+  const st = stretch;
+  await st.loading;
+  if (!st.ok || !playBuffer) return false;
+  if (st.buf !== playBuffer) {
+    if (st.id) st.keeper.port.postMessage({ type: 'free', id: st.id });
+    const chans = [];
+    for (let c = 0; c < Math.min(2, playBuffer.numberOfChannels); c++) chans.push(playBuffer.getChannelData(c).slice());
+    st.id = ++stretchSeq;
+    st.keeper.port.postMessage({ type: 'data', id: st.id, channels: chans }, chans.map(a => a.buffer));
+    st.buf = playBuffer;
+  }
+  return true;
+}
+
+// Starts the stretched music at pausedAt: a node of its own per play, like the
+// buffer source (so a seek crossfades), on the AudioContext's clock — it starts
+// at `when`, which is playStartCtx, so audioTime() and every tick stay right.
+function playStretched() {
+  const when = audioCtx.currentTime + 0.03;
+  playStartOffset = Math.min(Math.max(0, pausedAt), playBuffer.duration);
+  const node = new AudioWorkletNode(audioCtx, 'rf-stretch', {
+    numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2],
+    processorOptions: { id: stretch.id, pos: playStartOffset, rate: playbackRate, when },
+  });
+  const src = {
+    stretched: true,
+    onended: null,
+    stop(at) {
+      node.port.postMessage({ type: 'stop', at: at ?? audioCtx.currentTime });
+      setTimeout(() => { try { node.disconnect(); } catch { /* gone */ } }, 200);
+    },
+  };
+  node.port.onmessage = e => { if (e.data && e.data.type === 'ended' && src.onended) src.onended(); };
+  playFade = audioCtx.createGain();
+  playFade.gain.setValueAtTime(0, when);
+  playFade.gain.linearRampToValueAtTime(1, when + AUDIO_FADE_S);
+  node.connect(playFade);
+  playFade.connect(playGain);
+  playStartCtx = when;
+  src.onended = onSourceEnded;
+  playSource = src;
+  playing = true;
+}
+
+// ── Frequency filter on the music ───────────────────────────────────────────
+function routeMusic() {
+  if (!playGain || !audioCtx) return;
+  try { playGain.disconnect(); } catch { /* not connected */ }
+  playFilterNodes.forEach(f => { try { f.disconnect(); } catch { /* not connected */ } });
+  playFilterNodes = [];
+  if (!playFilterType) { playGain.connect(audioCtx.destination); return; }
+  let prev = playGain;
+  for (let i = 0; i < 2; i++) {
+    const f = audioCtx.createBiquadFilter();
+    f.type = playFilterType;
+    f.frequency.value = playFilterHz;
+    f.Q.value = playFilterType === 'bandpass' ? 0.9 : 0.707;
+    prev.connect(f);
+    prev = f;
+    playFilterNodes.push(f);
+  }
+  prev.connect(audioCtx.destination);
+}
+
+const filterHzFromSlider = v => FILTER_MIN_HZ * Math.pow(FILTER_MAX_HZ / FILTER_MIN_HZ, v);
+const filterSliderFromHz = hz => Math.log(hz / FILTER_MIN_HZ) / Math.log(FILTER_MAX_HZ / FILTER_MIN_HZ);
+
+function showFilterHz() {
+  const lab = document.getElementById('playFilterHz');
+  if (lab) lab.textContent = playFilterHz >= 1000 ? `${(playFilterHz / 1000).toFixed(1)} kHz` : `${Math.round(playFilterHz)} Hz`;
+}
+
+(function wireListenHelp() {
+  const keep = document.getElementById('keepPitch');
+  if (keep) {
+    keep.checked = keepPitch;
+    keep.addEventListener('change', () => {
+      keepPitch = keep.checked;
+      try { localStorage.setItem('rf-keep-pitch', keepPitch ? '1' : '0'); } catch { /* storage blocked */ }
+      if (keepPitch && playbackRate !== 1) prepareStretch();
+      if (audioIsPlaying() && playBuffer) audioSeek(audioTime());   // restart the music the other way
+    });
+  }
+  const sel = document.getElementById('playFilter');
+  const freq = document.getElementById('playFilterFreq');
+  const row = document.getElementById('playFilterFreqRow');
+  sel?.addEventListener('change', () => {
+    playFilterType = sel.value;
+    if (row) row.hidden = !playFilterType;
+    if (playFilterType) {
+      playFilterHz = FILTER_DEFAULT_HZ[playFilterType];
+      if (freq) freq.value = String(filterSliderFromHz(playFilterHz));
+      showFilterHz();
+    }
+    routeMusic();
+  });
+  freq?.addEventListener('input', () => {
+    playFilterHz = filterHzFromSlider(parseFloat(freq.value));
+    playFilterNodes.forEach(f => f.frequency.setTargetAtTime(playFilterHz, audioCtx.currentTime, 0.02));
+    showFilterHz();
+  });
+})();
 
 function audioPause() {
   if (playBuffer) {

@@ -1912,5 +1912,18 @@
   "Nota abafada (X, dead note) no traste {f}: no jogo esta corda toca-se abafada": "Dead note (X) on fret {f}: in the game this string is played muted",
   "X: nota abafada (dead note) — no jogo, essa corda toca-se abafada; o traste vê-se ao passar o cursor": "X: a dead note — in the game that string is played muted; hover over it to see its fret",
   "A corda toca-se abafada, sem som de nota (o X da tablatura)": "The string is played muted, with no note sounding (the X of tab)",
-  "Abafada (X)": "Dead note (X)"
+  "Abafada (X)": "Dead note (X)",
+  "Ouvir melhor": "Hear it better",
+  "Abrandada, a música mantém o tom em vez de ficar mais grave": "Slowed down, the music keeps its pitch instead of going lower",
+  "Ao abrandar, manter o tom": "Keep the pitch when slowed down",
+  "Deixa passar só uma parte das frequências da música (as notas, o metrónomo e os tiques não são filtrados)": "Lets only part of the music's frequencies through (the notes, the metronome and the ticks are not filtered)",
+  "Filtro de frequências": "Frequency filter",
+  "Sem filtro": "No filter",
+  "Só os graves (bombo, baixo)": "Lows only (kick, bass)",
+  "Só os médios (guitarra, voz)": "Mids only (guitar, vocals)",
+  "Só os agudos (pratos, palhetada)": "Highs only (cymbals, picking)",
+  "Frequência": "Frequency",
+  "<p><strong>Ao abrandar, manter o tom</strong>: com a velocidade abaixo de 100%, a música toca mais devagar sem ficar mais grave, para ouvir as notas como elas são enquanto sincronizas ou marcas a ouvir. O som é esticado no momento (WSOLA), por isso pode soar um pouco \"aos soluços\" nos ataques, mais a 50% ou menos. Desligado, abranda como antes, com o tom a descer.</p>": "<p><strong>Keep the pitch when slowed down</strong>: below 100% speed, the music plays slower without going lower, so you hear the notes as they are while you sync or mark by ear. The sound is stretched as it plays (WSOLA), so attacks may sound a little \"stuttery\", more so at 50% or below. Off, it slows down as before, with the pitch dropping.</p>",
+  "<p><strong>Filtro</strong>: deixa passar só uma parte das frequências da música. <em>Só os graves</em> destaca o bombo e o baixo, que marcam o tempo; <em>só os médios</em>, a guitarra e a voz; <em>só os agudos</em>, os pratos e o ataque da palhetada. Ajusta a frequência de corte com o deslizador. As notas da partitura, o metrónomo e os tiques não são filtrados. Não precisa da separação de instrumentos, mas separa muito menos: é um filtro, não um instrumento isolado.</p>": "<p><strong>Filter</strong>: lets only part of the music's frequencies through. <em>Lows only</em> brings out the kick and the bass, which keep the time; <em>mids only</em>, the guitar and the vocals; <em>highs only</em>, the cymbals and the attack of the pick. Set the cutoff frequency with the slider. The score's notes, the metronome and the ticks are not filtered. It needs no instrument separation, but it separates far less: it is a filter, not an isolated instrument.</p>",
+  "<p>Ideias vindas do editor Charter.</p>": "<p>Ideas from the Charter editor.</p>"
 };

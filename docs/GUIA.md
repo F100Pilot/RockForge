@@ -244,6 +244,12 @@ queres recuperar. Ficam pendentes como antes; Desfazer volta à versão constru�
     áudio** ligadas aparece também a faixa do metrónomo: cada tempo verde quando um ataque da
     faixa de cima (escolhe a bateria separada) cai nele, laranja quando está fora, cinzento sem
     ataque perto, e o total e quanto a grelha está adiantada ou atrasada;
+  - **Ouvir melhor**: **Ao abrandar, manter o tom** (ligado por omissão) — com a velocidade
+    abaixo de 100 % a música fica mais lenta sem ficar mais grave, para conferires as notas
+    devagar; desligado, abranda como uma fita. E um filtro só para a música (não para os
+    tiques): **Só os graves (bombo, baixo)**, **Só os médios (guitarra, voz)** ou **Só os
+    agudos (pratos, palhetada)**, com a **Frequência** ajustável — os graves ajudam a ouvir o
+    tempo, os agudos o ataque de cada palhetada;
   - **Fonte de áudio**: a mistura completa; **«pista» (sintetizada)**, as notas dessa pista
     tocadas sozinhas e limpas, boas para conferir a sincronização de cada pista;
     **Voz (sintetizada)**, a melodia em que a letra do GP é cantada; e, depois de

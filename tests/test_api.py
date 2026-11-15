@@ -109,6 +109,17 @@ def test_the_practice_mode_scripts_are_served(client: TestClient) -> None:
         assert marker in r.text
 
 
+def test_the_worklet_that_slows_down_without_lowering_the_pitch_is_served(
+    client: TestClient,
+) -> None:
+    """Áudio ▾ → "Ao abrandar, manter o tom": app.js loads stretch-worklet.js
+    into the audio worklet by URL, so it must be served as JavaScript."""
+    r = client.get("/stretch-worklet.js")
+    assert r.status_code == 200
+    assert "javascript" in r.headers["content-type"]
+    assert "registerProcessor('rf-stretch'" in r.text
+
+
 def test_the_3d_highway_and_its_three_js_are_served(client: TestClient) -> None:
     """Partitura → "Pista 3D": highway3d.js loads the vendored three.js on first
     use, so both have to be served (and cache-busted like app.js)."""

@@ -4796,6 +4796,31 @@ Playwright on `/onset-levels` answers planted at a known distance from each beat
 48 of 65 green, "no tempo"; 40 ms after → "50 ms antes"; every 4th beat left without one →
 grey; switching the metronome off removes the lane; no page errors. The readings carry the
 bars' 10 ms resolution. Not tried on a real separated drum track from here.
+**Slowing down without lowering the pitch, and a filter on playback** ("Ouvir melhor", ideas
+read in the Charter editor, 2026-11-15; none of its code — its time-stretch is RubberBand,
+GPL). Both in the "Áudio ▾" panel. **"Ao abrandar, manter o tom"** (`#keepPitch`,
+`rf-keep-pitch`, default on): below 1× the decoded buffer plays through `web/stretch-worklet.js`
+— WSOLA (Verhelst & Roelands 1993: 40 ms Hann frames 20 ms apart, each moved by up to 12 ms to
+the best normalised cross-correlation with the previous frame's continuation), pure code
+(`createStretcher`, tested under Node) plus an AudioWorklet processor. The recording is posted
+once per decoded buffer to a "keeper" node (`prepareStretch`, a copy of ≤ 2 channels) and kept
+in the worklet scope's `STORE`; each play/seek makes a new 'rf-stretch' node that starts AT
+`when` on the context clock (`playStretched`, `playStartCtx = when`), so the playhead math
+(`playStartOffset + elapsed × rate`) and the ticks are unchanged. **The read position advances
+exactly hop × rate per frame and each frame is CENTRED on it** (`nominal = pos·sr − hs(1−rate)`)
+— from the frame's start every sound came out up to 33 ms early at 0.5×. Until the worklet is
+ready the old pitch-lowering source plays and is swapped in at once (`audioSeek(audioTime())`).
+About 19 ms of CPU per second of audio (a class, not per-instance closures, which ran 3× slower
+cold in V8). **Filter** (`#playFilter`, lowpass/bandpass/highpass, `#playFilterFreq` on a log
+scale 40 Hz–10 kHz, `routeMusic`): two biquads in series (24 dB/oct) between `playGain` and the
+destination — the music only, never the ticks or the metronome; not remembered. Guarded by
+`tests/web/stretch.test.js` (pitch kept at 0.5/0.75/0.9, a steady level, each onset where
+start + elapsed × rate puts it within 10 ms of recording time, the start position, mono to both
+outputs, the end — mutation-checked) and
+`test_the_worklet_that_slows_down_without_lowering_the_pitch_is_served`; with Playwright (PT
+1440 / EN 760 px): a 440 Hz recording at 0.5× read 439 Hz with it, 221 Hz without, the clock at
+exactly 0.5×, seek and pause kept, a 150 Hz low-pass took the 440 Hz tone 37 dB down, no page
+errors. Not heard on the user's machine.
 
 **"Ouvir (aproximação)" on a tone** (GitHub issue #17: "with so many tones
 listing them all by name … a preview button"). `previewTone(tone)` plays a short

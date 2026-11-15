@@ -6,6 +6,15 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novidades
+
+- **Abrandar sem mudar o tom.** Na Partitura, **Áudio ▾ → Ouvir melhor → Ao abrandar, manter
+  o tom** (ligado por omissão): com a velocidade abaixo de 100 %, a música fica mais lenta sem
+  ficar mais grave, e o cursor e as notas continuam onde a música está.
+- **Filtro na reprodução**: no mesmo sítio, ouvir só os graves, só os médios ou só os agudos
+  da música, com a frequência ajustável — ajuda a ouvir o tempo ou o ataque de cada nota ao
+  sincronizar. A ideia veio do editor Charter.
+
 ## [0.12.0 beta 11] — 2026-11-14
 
 ### Correções

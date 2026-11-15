@@ -1206,6 +1206,15 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                   <label class="check"><input type="checkbox" id="syncTick" checked> Tique por nota</label>
                   <label class="pv-field">Metrónomo <input type="range" id="metroVolume" min="0" max="2" step="0.05" value="1"></label>
                   <label class="check" title="Um clique em cada tempo da partitura, como está desenhada (com as correções por aplicar); o 1.º tempo de cada compasso mais agudo. Ouve-se se a grelha de compassos bate com a música, e nas Barras de áudio aparece a faixa do metrónomo, para comparar cada tempo com os ataques (da bateria, por exemplo)"><input type="checkbox" id="syncMetro"> Clique em cada tempo</label>
+                  <div class="dd-cap">Ouvir melhor <button class="info-btn" data-info="listen-help">ⓘ</button></div>
+                  <label class="check" title="Abrandada, a música mantém o tom em vez de ficar mais grave"><input type="checkbox" id="keepPitch" checked> Ao abrandar, manter o tom</label>
+                  <select id="playFilter" aria-label="Filtro de frequências" title="Deixa passar só uma parte das frequências da música (as notas, o metrónomo e os tiques não são filtrados)">
+                    <option value="">Sem filtro</option>
+                    <option value="lowpass">Só os graves (bombo, baixo)</option>
+                    <option value="bandpass">Só os médios (guitarra, voz)</option>
+                    <option value="highpass">Só os agudos (pratos, palhetada)</option>
+                  </select>
+                  <label class="pv-field" id="playFilterFreqRow" hidden>Frequência <input type="range" id="playFilterFreq" min="0" max="1" step="0.005" value="0.5"> <span id="playFilterHz" class="meta" style="white-space:nowrap;min-width:4.2em;text-align:right"></span></label>
                   <div class="dd-cap">Fonte de áudio <button class="info-btn" data-info="stems">ⓘ</button></div>
                   <select id="audioSource" aria-label="Fonte de áudio">
                     <option value="">Mistura completa</option>
