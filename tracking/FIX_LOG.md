@@ -420,6 +420,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0412](#fix-0412) | BUG-0413 | 0.12.0-beta.11 | passed | pending |
 | [FIX-0413](#fix-0413) | BUG-0414 | 0.12.0-beta.11 | pending | pending |
 | [FIX-0414](#fix-0414) | BUG-0415 | 0.12.0-beta.11 | passed | automated |
+| [FIX-0415](#fix-0415) | BUG-0416 | unreleased | passed | automated |
 
 ## FIX-0001
 
@@ -9114,3 +9115,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Low: only scoops change; a lead-in the game would refuse to link is cleared by resolve_links. |
+
+## FIX-0415
+
+**Bugs:** [BUG-0416](bugs/viewer.md#bug-0416)
+
+**Root cause:** updateFretboard drew every lit note as its fret; chord_display and /arrangements built the chord name from every string's pitch, mute or not.
+
+**Solution:** The neck draws a dead note grey with an X; chord_display and /arrangements leave a fret-hand-muted string out of the chord's name (the template keeps its fret and finger).
+
+| | |
+|---|---|
+| Date | 2026-11-17 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | a736709 |
+| Components | viewer; psarc |
+| Tests | tests/test_chords.py::test_a_dead_string_is_left_out_of_the_chords_name; tests/test_api.py::test_a_dead_string_in_a_chord_reaches_the_score_as_a_mute |
+| Manual checks | an invented GP5 of 6 X 8 octaves built for real: the neck shows 6, a grey X and 8 (PT 1440 / EN 760 px, no page errors), no chord name |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: only chords with a muted string change name; a template shared by a muted and an unmuted chord takes the name of the first. |

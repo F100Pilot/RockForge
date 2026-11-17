@@ -20717,6 +20717,58 @@
           "note": "FIX-0414 (f19fd3f)"
         }
       ]
+    },
+    {
+      "id": "BUG-0416",
+      "title": "A dead note in a chord lit the neck at its stored fret and gave its pitch to the chord's name",
+      "detected": "2026-11-16",
+      "reported_by": "a user, GitHub issue #30",
+      "found_in_version": "0.12.0-beta.11",
+      "found_in_build": "pending",
+      "module": "viewer",
+      "description": "A fret-hand mute (X) in a chord carries a fret in the file (where the hand mutes). The score drew it as X, but the neck under the score lit that string at that fret as a note to play, and the chord was named from every string including the muted one, in the viewer and in the chord template the XML and the SNG carry.",
+      "steps": [
+        "import the Songsterr tab Queens of the Stone Age - Run, Run, Run (solo) or any tab with an octave 6 X 8",
+        "turn on Braço and play the chords"
+      ],
+      "expected": "The muted string shown as X, and the chord named only by the strings that sound.",
+      "observed": "The neck shows the muted string at a fret (5, 8...), and an octave is named A#5 / D5/A after the muted string's pitch.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "Fixed",
+      "root_cause": "updateFretboard drew every lit note as its fret; chord_display and /arrangements built the chord name from every string's pitch, mute or not.",
+      "fixes": [
+        "FIX-0415"
+      ],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [
+        "https://github.com/F100Pilot/RockForge/issues/30"
+      ],
+      "resolved": "2026-11-17",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-17",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-17",
+          "status": "Triaged",
+          "note": "the screenshot shows the X on the score and the A string lit at fret 5 on the neck"
+        },
+        {
+          "date": "2026-11-17",
+          "status": "In Progress",
+          "note": "neck draws X; muted strings left out of chord names"
+        },
+        {
+          "date": "2026-11-17",
+          "status": "Fixed",
+          "note": "FIX-0415 (a736709)"
+        }
+      ]
     }
   ]
 }

@@ -25,7 +25,9 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 - [BUG-0414](bugs/editor.md#bug-0414) Moving a note in the note editor left the old note and put the new one at its time from before a sync correction
 - [BUG-0415](bugs/import.md#bug-0415) A slide into a note turned the picked note before it into a slide the tab does not have
 
-**Known bugs it carried:** —
+**Known bugs it carried:** 
+
+- [BUG-0416](bugs/viewer.md#bug-0416) A dead note in a chord lit the neck at its stored fret and gave its pitch to the chord's name (Low, now Fixed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 

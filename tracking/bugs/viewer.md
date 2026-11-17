@@ -1909,3 +1909,47 @@ The lyric lookup's cards rounded the recording's length while the transport and 
 - 2026-11-04 — Triaged: code review 2026-11-04; FIX-0405 (a249ef0)
 - 2026-11-04 — In Progress: code review 2026-11-04; FIX-0405 (a249ef0)
 - 2026-11-04 — Fixed: code review 2026-11-04; FIX-0405 (a249ef0)
+
+## BUG-0416
+
+**A dead note in a chord lit the neck at its stored fret and gave its pitch to the chord's name**
+
+| | |
+|---|---|
+| Detected | 2026-11-16 |
+| Reported by | a user, GitHub issue #30 |
+| Found in | 0.12.0-beta.11 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P3 |
+| Status | Fixed |
+
+A fret-hand mute (X) in a chord carries a fret in the file (where the hand mutes). The score drew it as X, but the neck under the score lit that string at that fret as a note to play, and the chord was named from every string including the muted one, in the viewer and in the chord template the XML and the SNG carry.
+
+**Steps to reproduce:** 
+
+1. import the Songsterr tab Queens of the Stone Age - Run, Run, Run (solo) or any tab with an octave 6 X 8
+2. turn on Braço and play the chords
+
+**Expected:** The muted string shown as X, and the chord named only by the strings that sound.
+
+**Observed:** The neck shows the muted string at a fret (5, 8...), and an octave is named A#5 / D5/A after the muted string's pitch.
+
+**Root cause:** updateFretboard drew every lit note as its fret; chord_display and /arrangements built the chord name from every string's pitch, mute or not.
+
+**Fixes:** [FIX-0415](../FIX_LOG.md#fix-0415) (unreleased)
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** 2026-11-17 · **Closed:** _pending_
+
+**Evidence:**
+
+- https://github.com/F100Pilot/RockForge/issues/30
+
+**History:**
+
+- 2026-11-17 — Open: reported
+- 2026-11-17 — Triaged: the screenshot shows the X on the score and the A string lit at fret 5 on the neck
+- 2026-11-17 — In Progress: neck draws X; muted strings left out of chord names
+- 2026-11-17 — Fixed: FIX-0415 (a736709)
