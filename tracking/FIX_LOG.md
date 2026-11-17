@@ -420,7 +420,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0412](#fix-0412) | BUG-0413 | 0.12.0-beta.11 | passed | pending |
 | [FIX-0413](#fix-0413) | BUG-0414 | 0.12.0-beta.11 | pending | pending |
 | [FIX-0414](#fix-0414) | BUG-0415 | 0.12.0-beta.11 | passed | automated |
-| [FIX-0415](#fix-0415) | BUG-0416 | unreleased | passed | automated |
+| [FIX-0415](#fix-0415) | BUG-0416 | 0.12.0-beta.12 | passed | automated |
 
 ## FIX-0001
 
@@ -9128,7 +9128,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-17 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.12 |
 | Commits | a736709 |
 | Components | viewer; psarc |
 | Tests | tests/test_chords.py::test_a_dead_string_is_left_out_of_the_chords_name; tests/test_api.py::test_a_dead_string_in_a_chord_reaches_the_score_as_a_mute |

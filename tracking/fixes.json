@@ -10467,7 +10467,7 @@
       "commits": [
         "a736709"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.12",
       "tests": [
         "tests/test_chords.py::test_a_dead_string_is_left_out_of_the_chords_name",
         "tests/test_api.py::test_a_dead_string_in_a_chord_reaches_the_score_as_a_mute"

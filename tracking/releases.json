@@ -828,6 +828,28 @@
       "approved_by": "the maintainer (asked for the release)",
       "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
       "exceptions": []
+    },
+    {
+      "version": "0.12.0-beta.12",
+      "status": "Beta",
+      "created": "2026-11-17",
+      "published": "pending",
+      "commit": "pending",
+      "build": "GitHub Actions release workflow",
+      "artifacts": [],
+      "goal": "New: slow down without lowering the pitch, a filter on playback, bars or beats inserted/removed, dragging bar lines. Fix: dead notes shown as frets on the neck and counted in chord names (issue #30)",
+      "features": [
+        "Slow down without changing the pitch",
+        "A filter on playback",
+        "Bars too many or too few",
+        "Drag the bar lines"
+      ],
+      "improvements": [],
+      "breaking": [],
+      "tests": "CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow",
+      "approved_by": "the maintainer (asked for the release)",
+      "upgrade": "Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.",
+      "exceptions": []
     }
   ]
 }

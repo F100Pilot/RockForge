@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.12.0 beta 12] — 2026-11-17
+
 ### New
 
 - **Slow down without changing the pitch.** On the Score, **Audio ▾ → Hear it better → Keep the

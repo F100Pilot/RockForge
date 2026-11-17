@@ -4,6 +4,36 @@
 
 Every version, newest first. What a version fixed and the bugs it still carried come from the bug and fix registers. Process: [docs/RELEASE_PROCESS.md](../docs/RELEASE_PROCESS.md).
 
+## 0.12.0-beta.12
+
+| | |
+|---|---|
+| Status | Beta |
+| Created | 2026-11-17 |
+| Published | _pending_ |
+| Commit | _pending_ |
+| Build | GitHub Actions release workflow |
+| Artifacts | — |
+| Tests | CI (ruff, mypy, pytest, ESLint, Docker build) on the release commit, tools/release_check, and the frozen .exe smoke test of the release workflow |
+| Approved by | the maintainer (asked for the release) |
+
+**Goal:** New: slow down without lowering the pitch, a filter on playback, bars or beats inserted/removed, dragging bar lines. Fix: dead notes shown as frets on the neck and counted in chord names (issue #30)
+
+**New:**
+
+- Slow down without changing the pitch
+- A filter on playback
+- Bars too many or too few
+- Drag the bar lines
+
+**Bugs fixed:** 
+
+- [BUG-0416](bugs/viewer.md#bug-0416) A dead note in a chord lit the neck at its stored fret and gave its pitch to the chord's name
+
+**Known bugs it carried:** —
+
+**Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
+
 ## 0.12.0-beta.11
 
 | | |

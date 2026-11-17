@@ -1937,7 +1937,7 @@ A fret-hand mute (X) in a chord carries a fret in the file (where the hand mutes
 
 **Root cause:** updateFretboard drew every lit note as its fret; chord_display and /arrangements built the chord name from every string's pitch, mute or not.
 
-**Fixes:** [FIX-0415](../FIX_LOG.md#fix-0415) (unreleased)
+**Fixes:** [FIX-0415](../FIX_LOG.md#fix-0415) (0.12.0-beta.12)
 
 **Verified:** _pending_ (by _pending_)
 

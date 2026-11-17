@@ -1,17 +1,53 @@
+### New
+
+- **Slow down without changing the pitch.** On the Score, **Audio ▾ → Hear it better → Keep the
+  pitch when slowed down** (on by default): below 100 % speed the music plays slower without
+  dropping in pitch, and the cursor and the notes stay where the music is.
+- **A filter on playback**: in the same place, hear only the lows, only the mids or only the
+  highs of the music, with an adjustable frequency — it helps hear the beat or each note's
+  attack while syncing. The idea came from the Charter editor.
+- **Bars too many or too few.** In **Sync → More options**, when the tab has a bar (or a beat)
+  the recording does not, or lacks one: insert an empty bar, remove a bar, or insert/remove a
+  single beat. Everything after moves by that much and the bars around keep their tempo, instead
+  of one stretched bar. It can be done on every track at once. It rebuilds the project straight
+  away; undo it with the previous version.
+- **Drag the bar lines.** In **Drag** mode, a bar line can be dragged to where the bar starts in
+  the recording: the bars between the neighbouring corrections change tempo, and the new BPMs
+  show beside the line as you drag. With **Shift**, everything after moves with it. It stays
+  pending like the other corrections (Ctrl+Z undoes it).
+
 ### Fixes
 
-- **A slide into a note no longer turns the note before it into a slide:** when the tab marks a slide into a note (like "8 /12"), the picked note before it became a slide up to that note (the 8 slid to the 12), which the tab does not have. The note before is now left as it is. When there is room before the note, the slide-in is still a short note a few frets lower, now linked to the note, so the game shows one attack sliding onto it. When there is no room, the note stays plain. Rebuild the song to see the change.
-
-- **Moving a note to another string or fret no longer leaves the old one behind:** if the same rebuild (or a later one) also corrected the sync, the old note stayed on the score and the new one sat at its time from before the correction. Note edits now follow the sync, like sections and tone changes. When you drag a note only onto another string, a small sideways wobble of the mouse no longer changes its time. In a project where this already happened, clear it with "Notes ▾" → "Clear this track" and redo the edit.
-
-- **Editing a note no longer takes away its tremolo or pinch harmonic:** in "Edit notes", changing only the fret (or the length) of a note with tremolo picking or a pinch harmonic removed that technique on the rebuild, because the editor never received it. A note now keeps every technique it had that the edit window does not show, and the score marks them (**T.P.** and **P.H.**), as the 3D highway does. An arpeggio's let ring also stays when one of its notes is edited.
+- **Dead notes (X) no longer show up as frets:** in a chord with a muted string, the neck under
+  the score lit that string at the fret the file stores for it, as if it were to be played. It
+  now shows a grey X, as the score and the 3D highway do. And the chord's name no longer counts
+  the muted string: an octave like 6 X 8 is no longer named "A#5" because of a note nobody plays
+  (on the score and in game).
 
 ---
 
+### Novidades
+
+- **Abrandar sem mudar o tom.** Na Partitura, **Áudio ▾ → Ouvir melhor → Ao abrandar, manter
+  o tom** (ligado por omissão): com a velocidade abaixo de 100 %, a música fica mais lenta sem
+  ficar mais grave, e o cursor e as notas continuam onde a música está.
+- **Filtro na reprodução**: no mesmo sítio, ouvir só os graves, só os médios ou só os agudos
+  da música, com a frequência ajustável — ajuda a ouvir o tempo ou o ataque de cada nota ao
+  sincronizar. A ideia veio do editor Charter.
+- **Compassos a mais ou a menos.** Em **Sincronização → Mais opções**, quando a tab tem um
+  compasso (ou um tempo) que a gravação não tem, ou lhe falta um: inserir um compasso vazio,
+  remover um compasso, ou inserir/remover um só tempo. Tudo o que vem depois anda esse tempo e os
+  compassos à volta mantêm o andamento, em vez de um compasso esticado. Pode ser feito em todas
+  as pistas de uma vez. Reconstrói o projeto logo; desfaz-se com a versão anterior.
+- **Arrastar as linhas de compasso.** No modo **Arrastar**, a linha de um compasso arrasta-se
+  para onde ele começa na gravação: os compassos entre as correções vizinhas mudam de andamento,
+  e os BPM novos aparecem ao lado da linha enquanto arrastas. Com **Shift**, tudo o que vem
+  depois anda com ela. Fica pendente como as outras correções (Ctrl+Z desfaz).
+
 ### Correções
 
-- **Um slide de entrada já não transforma a nota anterior num slide:** quando a tab marca um slide para dentro de uma nota (como "8 /12"), a nota palhetada antes dela passava a um slide até ao alvo (o 8 deslizava até ao 12), coisa que a tab não tem. Agora a nota anterior fica como está. Quando há espaço antes da nota, o slide de entrada continua a ser uma nota curta uns trastes abaixo, agora ligada ao alvo, para o jogo mostrar um só ataque a deslizar até ele. Quando não há espaço, a nota fica simples. Reconstrói a música para ver a mudança.
-
-- **Mudar uma nota de corda ou de traste já não deixa a antiga no sítio:** se na mesma reconstrução (ou numa seguinte) também acertavas a sincronização, a nota antiga continuava na partitura e a nova ficava no tempo de antes da correção. Agora as edições de notas acompanham a sincronização, como as secções e as mudanças de tom. Ao arrastar uma nota só para outra corda, um pequeno desvio do rato para o lado já não lhe muda o tempo. Num projeto onde isto já aconteceu, apaga em "Notas ▾" → "Limpar esta pista" e refaz a edição.
-
-- **Editar uma nota já não lhe tira o tremolo nem o harmónico pinch:** em "Editar notas", mudar só o traste (ou a duração) de uma nota com tremolo picking ou harmónico pinch tirava-lhe essa técnica na reconstrução, porque o editor não as recebia. Agora a nota guarda todas as técnicas que tinha e que a janela de edição não mostra, e a pauta passa a marcá-las (**T.P.** e **P.H.**), tal como a pista 3D. O let ring de um arpejo também fica quando se edita uma das notas.
+- **As notas abafadas (X) já não aparecem como trastes:** num acorde com uma corda abafada, o
+  braço da guitarra por baixo da partitura mostrava essa corda acesa no traste que o ficheiro
+  guarda para ela, como se fosse para tocar. Agora mostra um X cinzento, como a partitura e a
+  pista 3D. E o nome do acorde deixa de contar a corda abafada: uma oitava como 6 X 8 já não
+  aparece como "A#5" por causa de uma nota que não se toca (na partitura e no jogo).

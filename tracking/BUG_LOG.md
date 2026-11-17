@@ -425,4 +425,4 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0413](bugs/editor.md#bug-0413) | Editing a note in the viewer dropped its tremolo, pinch harmonic and let ring | editor | Medium | P3 | Fixed | 0.12.0-beta.9 | 0.12.0-beta.11 |
 | [BUG-0414](bugs/editor.md#bug-0414) | Moving a note in the note editor left the old note and put the new one at its time from before a sync correction | editor | High | P2 | Fixed | 0.12.0-beta.10 | 0.12.0-beta.11 |
 | [BUG-0415](bugs/import.md#bug-0415) | A slide into a note turned the picked note before it into a slide the tab does not have | import | Medium | P2 | Fixed | 0.12.0-beta.10 | 0.12.0-beta.11 |
-| [BUG-0416](bugs/viewer.md#bug-0416) | A dead note in a chord lit the neck at its stored fret and gave its pitch to the chord's name | viewer | Low | P3 | Fixed | 0.12.0-beta.11 | — |
+| [BUG-0416](bugs/viewer.md#bug-0416) | A dead note in a chord lit the neck at its stored fret and gave its pitch to the chord's name | viewer | Low | P3 | Fixed | 0.12.0-beta.11 | 0.12.0-beta.12 |

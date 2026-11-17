@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.12.0 beta 12] — 2026-11-17
+
 ### Novidades
 
 - **Abrandar sem mudar o tom.** Na Partitura, **Áudio ▾ → Ouvir melhor → Ao abrandar, manter
