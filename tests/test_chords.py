@@ -125,3 +125,25 @@ def test_hand_shapes_cover_each_run_of_one_chord() -> None:
 def test_a_rest_longer_than_a_second_starts_a_new_hand_shape() -> None:
     spans = hand_shape_spans([(0.0, 0.0, 3), (0.9, 0.0, 3), (2.5, 0.0, 3)])
     assert [(a, b) for _, a, b, _ in spans] == [(0, 1), (2, 2)]
+
+
+def test_a_dead_string_is_left_out_of_the_chords_name() -> None:
+    """GitHub issue #30: an octave 6 X 8 whose X carries fret 8 (where the hand
+    mutes it) was named A#5 — after the F of a string nobody plays. A dead
+    string sounds no pitch: the octave alone is no chord the namer knows, so it
+    gets no name rather than a wrong one."""
+    from rockforge.domain.music import TabNote, Technique
+
+    dead = frozenset({Technique.FRET_MUTE})
+    notes = [
+        TabNote(string=0, fret=6, time=0.0, sustain=0.0),
+        TabNote(string=1, fret=8, time=0.0, sustain=0.0, techniques=dead),
+        TabNote(string=2, fret=8, time=0.0, sustain=0.0),
+    ]
+    frets = (6, 8, 8, X, X, X)
+    fingers, name = chord_display(frets, notes, (40, 45, 50, 55, 59, 64))
+    assert name == ""
+    assert fingers[1] != -1  # a finger still sits on the muted string
+    # The same frets with the A string played are the power chord.
+    played = [TabNote(string=n.string, fret=n.fret, time=0.0, sustain=0.0) for n in notes]
+    assert chord_display(frets, played, (40, 45, 50, 55, 59, 64))[1] == "A#5"

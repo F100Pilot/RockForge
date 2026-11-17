@@ -783,6 +783,11 @@ def test_a_dead_string_in_a_chord_reaches_the_score_as_a_mute(client: TestClient
             TabNote(string=0, fret=10, time=1.0, sustain=0.0),
             TabNote(string=1, fret=9, time=1.0, sustain=0.0,
                     techniques=frozenset({Technique.FRET_MUTE})),
+            # GitHub issue #30: an octave 6 X 8 whose X carries fret 8.
+            TabNote(string=0, fret=6, time=2.0, sustain=0.0),
+            TabNote(string=1, fret=8, time=2.0, sustain=0.0,
+                    techniques=frozenset({Technique.FRET_MUTE})),
+            TabNote(string=2, fret=8, time=2.0, sustain=0.0),
         ],
         tempo_map=TempoMap(beats=beats, average_bpm=120.0),
     )
@@ -795,7 +800,12 @@ def test_a_dead_string_in_a_chord_reaches_the_score_as_a_mute(client: TestClient
 
     notes = client.get(f"/jobs/{job['id']}/arrangements").json()[0]["notes"]
     assert [(n["string"], n["fret"], n["techniques"]) for n in notes] == [
-        (0, 10, []), (1, 9, ["mute"])]
+        (0, 10, []), (1, 9, ["mute"]), (0, 6, []), (1, 8, ["mute"]), (2, 8, [])]
+    # The X sounds no pitch: the octave is not named A#5 after the X's F, on
+    # the score nor in the game's chord template.
+    assert {n["chord_name"] for n in notes} == {None}
+    xml = (bundle / "arrangement_lead.xml").read_text(encoding="utf-8")
+    assert 'chordName="A#5"' not in xml
 
 
 def test_arrangements_carry_the_bend_curve_for_the_3d_highway(client: TestClient) -> None:

@@ -180,14 +180,21 @@ def chord_display(
     """``(fingers, name)`` of a chord template — what the game shows on the
     chord. ``notes`` are the chord's notes (anything with ``string`` and
     ``left_hand``), read for the Guitar Pro file's own fingering; the name is
-    :func:`name_chord` of the sounding pitches, "" when it has none."""
+    :func:`name_chord` of the sounding pitches, "" when it has none. A string
+    played dead (fret-hand mute, the X of tab) sounds no pitch, so it is left
+    out of the name — its fret only says where the hand mutes it (GitHub issue
+    #30: a power chord with an X between its strings was named after the X)."""
     left = [-1] * len(frets)
+    dead: set[int] = set()
     for n in notes:
         string, hand = getattr(n, "string", -1), getattr(n, "left_hand", -1)
         if 0 <= string < len(left):
             left[string] = hand
+            if Technique.FRET_MUTE in getattr(n, "techniques", ()):
+                dead.add(string)
     # An open string under a capo sounds at the capo (it is held there, unfingered).
-    pitches = [open_midi[s] + (f or capo) for s, f in enumerate(frets) if f >= 0]
+    pitches = [open_midi[s] + (f or capo) for s, f in enumerate(frets)
+               if f >= 0 and s not in dead]
     return group_fingering(frets, left), name_chord(pitches) or ""
 
 

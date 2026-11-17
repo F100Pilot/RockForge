@@ -24,6 +24,14 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   e os BPM novos aparecem ao lado da linha enquanto arrastas. Com **Shift**, tudo o que vem
   depois anda com ela. Fica pendente como as outras correções (Ctrl+Z desfaz).
 
+### Correções
+
+- **As notas abafadas (X) já não aparecem como trastes:** num acorde com uma corda abafada, o
+  braço da guitarra por baixo da partitura mostrava essa corda acesa no traste que o ficheiro
+  guarda para ela, como se fosse para tocar. Agora mostra um X cinzento, como a partitura e a
+  pista 3D. E o nome do acorde deixa de contar a corda abafada: uma oitava como 6 X 8 já não
+  aparece como "A#5" por causa de uma nota que não se toca (na partitura e no jogo).
+
 ## [0.12.0 beta 11] — 2026-11-14
 
 ### Correções

@@ -12321,8 +12321,12 @@ function updateFretboard(vtDisp, warp) {
     const { n, from, to } = lit[i];
     if (vtDisp < from || vtDisp > to) continue;
     const { x, y } = fretXY(n.string, n.fret);
-    s += `<circle cx="${x}" cy="${y}" r="9" fill="${STRING_COLORS[n.string]}" stroke="#fff" stroke-width="1.5"/>`;
-    s += `<text x="${x}" y="${y + 4}" fill="#14151a" font-size="11" font-weight="700" text-anchor="middle">${n.fret}</text>`;
+    // A dead note (X) is played muted where the hand sits, not as its fret:
+    // drawn grey with an X, as the score and the 3D highway draw it (GitHub
+    // issue #30: the fret it carries read as a note to play).
+    const dead = (n.techniques || []).includes('mute');
+    s += `<circle cx="${x}" cy="${y}" r="9" fill="${dead ? '#8a90a0' : STRING_COLORS[n.string]}" stroke="#fff" stroke-width="1.5"/>`;
+    s += `<text x="${x}" y="${y + 4}" fill="#14151a" font-size="11" font-weight="700" text-anchor="middle">${dead ? 'X' : n.fret}</text>`;
   }
   // At 60fps the set of currently-lit notes is unchanged across most frames;
   // only re-parse the overlay's DOM when the markup actually differs.

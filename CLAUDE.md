@@ -5416,7 +5416,14 @@ mutation-checked); the user's own XMLs rebuilt: 64 + 138 chords with one dead
 string, none muted whole, `check_sng` clean; an invented GP5 built for real
 (`/psarc-check` clean, the SNG read back), the X, its tooltip, the legend and the
 checkbox with Playwright (PT 1440 / EN 760 px), unticking one and rebuilding left
-it played and the other 15 muted. **Not seen in game from here.**
+it played and the other 15 muted. **Not seen in game from here.** **A dead string is no pitch** (GitHub issue #30): `chord_display` and
+`/arrangements`' `chord_name` leave a muted string out of the chord's name (an
+octave 6 X 8 whose X carries fret 8 was "A#5"; the template keeps its fret and
+finger, where the hand mutes it), and the neck under the score lights it grey
+with an X (`updateFretboard`) instead of its stored fret. Guarded by
+`test_a_dead_string_is_left_out_of_the_chords_name` and the octave in
+`test_a_dead_string_in_a_chord_reaches_the_score_as_a_mute` (both fail without
+the fix); the neck with Playwright (PT 1440 / EN 760 px).
 
 **Repeated chords are marked HIGH DENSITY (condensed rendering).** A fast
 repeated identical chord — an 8th-note power-chord chug, say — must carry

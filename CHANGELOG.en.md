@@ -24,6 +24,14 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
   show beside the line as you drag. With **Shift**, everything after moves with it. It stays
   pending like the other corrections (Ctrl+Z undoes it).
 
+### Fixes
+
+- **Dead notes (X) no longer show up as frets:** in a chord with a muted string, the neck under
+  the score lit that string at the fret the file stores for it, as if it were to be played. It
+  now shows a grey X, as the score and the 3D highway do. And the chord's name no longer counts
+  the muted string: an octave like 6 X 8 is no longer named "A#5" because of a note nobody plays
+  (on the score and in game).
+
 ## [0.12.0 beta 11] — 2026-11-14
 
 ### Fixes

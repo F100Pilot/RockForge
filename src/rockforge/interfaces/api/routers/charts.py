@@ -250,7 +250,9 @@ def get_arrangements(job_id: str) -> list[ArrangementOut]:
         chord_notes: list[ArrangementNoteOut] = []
         for chord_el in root.findall("levels/level/chords/chord"):
             members = [parse_note(el, True) for el in chord_el.findall("chordNote")]
-            pitches = [open_midi[m.string] + offsets[m.string] + m.fret for m in members]
+            # A dead string (X) sounds no pitch: it is not part of the name.
+            pitches = [open_midi[m.string] + offsets[m.string] + m.fret
+                       for m in members if "mute" not in m.techniques]
             cname = name_chord(pitches)
             for m in members:
                 m.chord_name = cname
