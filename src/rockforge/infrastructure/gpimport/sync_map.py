@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import bisect
 import math
+import statistics
 from collections.abc import Callable, Sequence
 
 
@@ -94,6 +95,94 @@ def bar_time_points(
             continue
         points.append((int(tick), when))
     return points, skipped
+
+
+# Smoothing externally supplied bar times (``smooth_bar_times``). A mark is
+# re-placed when it sits more than SMOOTH_MIN_OFF_S off where the score's own
+# proportions put it between its neighbours, while those two neighbours span
+# what the score says at the local tempo (within SMOOTH_PAIR_TOL) — one mark
+# off, not a real change of tempo. The local tempo is the median of the marked
+# bars' tempo ratios over SMOOTH_WINDOW bars either side.
+SMOOTH_MIN_OFF_S = 0.08
+SMOOTH_PAIR_TOL = 0.04
+SMOOTH_WINDOW = 4
+
+
+def smooth_bar_times(
+    bar_times: Sequence[float], score_starts: Sequence[float]
+) -> tuple[list[float], list[int]]:
+    """Bar times with the marks that sit off between their neighbours moved
+    back where the score puts them, and the (1-based) bars moved.
+
+    ``score_starts[i]`` is where bar ``i + 1`` starts in the score's own clock
+    (its tempo map). GitHub issue #26: Songsterr marked bar 7 of a video 0.27 s
+    early against bars 6 and 8, which agree with the tab's tempo, and every bar
+    was placed exactly on its mark. A run of marks off in a row is re-placed
+    between the nearest marks that are not, by the score's proportions. A bar
+    that is really held longer (a fermata) leaves its two neighbours spanning
+    more than the score says, so it is never touched; neither is the first or
+    the last mark, nor a time that is not finite. Off by default — the marks
+    are the recording's word unless the user asks."""
+    n = min(len(bar_times), len(score_starts))
+    v = [float(x) for x in bar_times[:n]]
+    s = [float(x) for x in score_starts[:n]]
+    if n < 3 or not all(math.isfinite(x) for x in v + s):
+        return list(bar_times), []
+    flagged: set[int] = set()
+    for i in range(1, n - 1):
+        e1, e2 = s[i] - s[i - 1], s[i + 1] - s[i]
+        span = v[i + 1] - v[i - 1]
+        if e1 <= 0 or e2 <= 0 or span <= 0:
+            continue
+        lo, hi = max(1, i - SMOOTH_WINDOW), min(n - 1, i + SMOOTH_WINDOW + 1)
+        ratios = [
+            (v[j] - v[j - 1]) / (s[j] - s[j - 1])
+            for j in range(lo, hi) if s[j] > s[j - 1]
+        ]
+        local = statistics.median(ratios)
+        if local <= 0 or abs(span / (e1 + e2) / local - 1) > SMOOTH_PAIR_TOL:
+            continue
+        where = v[i - 1] + span * e1 / (e1 + e2)
+        if abs(v[i] - where) > SMOOTH_MIN_OFF_S:
+            flagged.add(i)
+    out = [float(x) for x in bar_times]
+    i = 1
+    while i < n - 1:
+        if i not in flagged:
+            i += 1
+            continue
+        j = i
+        while j + 1 in flagged:
+            j += 1
+        a, b = i - 1, j + 1
+        for k in range(i, j + 1):
+            out[k] = v[a] + (v[b] - v[a]) * (s[k] - s[a]) / (s[b] - s[a])
+        i = j + 1
+    return out, sorted(k + 1 for k in flagged)
+
+
+def _bar_runs(bars: Sequence[int]) -> str:
+    """1, 2, 3, 7, 9, 10 → "1-3, 7, 9-10"."""
+    runs: list[str] = []
+    last = -2
+    for bar in bars:
+        if runs and bar == last + 1:
+            first = runs[-1].split("-")[0]
+            runs[-1] = f"{first}-{bar}"
+        else:
+            runs.append(str(bar))
+        last = bar
+    return ", ".join(runs)
+
+
+def smoothed_bar_times_warning(bars: Sequence[int]) -> str:
+    """What smoothing the bar times changed."""
+    if not bars:
+        return "bar times smoothed: every mark already sat where its neighbours put it"
+    return (
+        f"bar times smoothed: {len(bars)} mark(s) that sat off between their neighbours "
+        f"were moved where the tab's tempo puts them (bars {_bar_runs(bars)})"
+    )
 
 
 def bar_times_warnings(n_bars: int, n_times: int, skipped: int) -> list[str]:

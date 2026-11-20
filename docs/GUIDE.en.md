@@ -181,6 +181,12 @@ bass is charted as a guitar.
   audio of **that** video (its link moves to "Don't have the audio?" so you can download it) and
   the file must be the Songsterr tab. After importing from Songsterr in step 1 with the video
   choice, this is done for you: video picked and audio downloaded.
+  **Smooth the video's bar times** (off by default): a video's times are marked by hand, and
+  now and then one bar is out of place (the one before comes out short, the next long, and that
+  bar's notes arrive early or late). When on, a mark out of place between two neighbours that
+  agree with the tab's tempo moves to where the tab puts it; a real change of tempo stays as it
+  is. The build's technical warnings say which bars moved. It can also be switched later, in
+  **Export → Build options**.
 
 ### Step 4 — Details
 
@@ -859,7 +865,8 @@ field. The strings' tuning (Drop D, Eb…) is changed per track in **Edit info**
 and tuning**.
 
 Import palm mute / slap / tap, and **Dynamic difficulty** (untick for a single difficulty with
-every note, if DD misbehaves on a song).
+every note, if DD misbehaves on a song). On a song synced to a Songsterr video's times there
+is also **Smooth the video's bar times** (see step 3 of a new project).
 
 **Recording** — **without one instrument**: builds the version with the recording without, for
 example, the bass, so you play it yourself over the song. It needs **Separate instruments** (in

@@ -6,6 +6,15 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+
+- **Smooth a Songsterr video's bar times.** The bar times Songsterr keeps for a video are
+  marked by hand, and now and then one is out of place: the bar before comes out short, the next
+  one long, and that bar's notes arrive early or late. With **Smooth the video's bar times** on
+  (step 3 of a new project, or **Export → Build options**), a mark out of place between two
+  neighbours that agree with the tab's tempo moves to where the tab puts it. A real change of
+  tempo stays as it is, and the warnings say which bars moved. It is off by default.
+
 ## [0.12.0 beta 12] — 2026-11-17
 
 ### New

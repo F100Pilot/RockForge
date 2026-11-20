@@ -502,7 +502,8 @@ def _check_imported_params(params: dict[str, object]) -> None:
         if params.get(key) is not None and not isinstance(params[key], str):
             raise bad(key, "texto")
     for key in ("sync_confirmed", "gp_synced", "import_mute_techniques", "recording_from_gp",
-                "lyrics_follow_chart", "gp_has_lyrics", "dynamic_difficulty"):
+                "lyrics_follow_chart", "gp_has_lyrics", "dynamic_difficulty",
+                "bar_times_smooth"):
         if params.get(key) is not None and not isinstance(params[key], bool):
             raise bad(key, "verdadeiro ou falso")
     for key in ("synced_arrangements", "tone_names", "bar_times", "tone_changes", "tones",
@@ -638,6 +639,15 @@ def _sync_source(params: dict[str, Any]) -> str | None:
     return "adjusted" if _sync_edited(params) else None
 
 
+def _video_bar_times(params: dict[str, Any]) -> bool:
+    """The chart is re-timed on a YouTube video's per-bar marks (Songsterr),
+    not on the tab's own tempo map — the times "smooth_bar_times" can touch."""
+    if not params.get("bar_times"):
+        return False
+    source = params.get("bar_times_source")
+    return not (isinstance(source, str) and source.startswith(SONGSTERR_TAB_SOURCE))
+
+
 def _param_number(value: object, default: float) -> float:
     """A stored number as a float — never an exception: one bad value in one
     project's params must not take GET /jobs (the home page) down with it."""
@@ -692,6 +702,8 @@ def _to_out(job: Job) -> JobOut:
         tempo_scale=tempo_scale,
         import_mutes=bool((job.params or {}).get("import_mute_techniques", True)),
         dynamic_difficulty=bool((job.params or {}).get("dynamic_difficulty", True)),
+        video_bar_times=_video_bar_times(params),
+        smooth_bar_times=params.get("bar_times_smooth") is True,
         backing_without=(
             str(params["backing_without"])
             if isinstance(params.get("backing_without"), str) and params["backing_without"]

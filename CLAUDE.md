@@ -450,6 +450,33 @@ re-inverting the dependency.
    `test_a_bar_that_says_it_plays_once_is_no_repeat`. The user's tab itself was
    not seen (songsterr.com is blocked here).
 
+   **A video's marks can be smoothed, on request** (`sync_map.smooth_bar_times`, GitHub issue
+   #26, 2026-11-20). The reporter's video (AngelMaker "Leech", `YnQXEm4xPo8`, the JSON he sent)
+   marks bars 6/7/8 at 11.70/13.17/15.19 s — bar 6 1.47 s, bar 7 2.02 s where the tab gives
+   1.71 each — and its marks swing 0.1–0.3 s around ~38 of 150 bars while the whole song spans
+   279.2 s against the tab's 279.6 s; every bar was placed on its mark, so bar 7 was heard
+   early. A mark is re-placed where the score's proportions put it between its neighbours when
+   it sits more than `SMOOTH_MIN_OFF_S` (80 ms) off AND those two neighbours span what the score
+   says at the LOCAL tempo (median ratio over `SMOOTH_WINDOW` bars, within `SMOOTH_PAIR_TOL`
+   4 %) — a held bar (fermata) breaks the second condition and is never touched; a run of marks
+   off in a row goes between the nearest good ones; the first and last marks stay. Known limit:
+   a step change of tempo of ~5-8 % that the TAB does not have can read as one mark off at that
+   bar. Off by default: `params["bar_times_smooth"]` (set only for a video's marks, never the
+   tab's own map — `api._video_bar_times`), `/jobs/gp` form `smooth_bar_times`,
+   `RebuildIn.smooth_bar_times` (null untouched), `JobOut.video_bar_times`/`smooth_bar_times`,
+   `GpJobSpec.smooth_bar_times` → `parse_gp_track(..., smooth=)` in both parsers, a warning
+   naming the bars moved; portable in `.rfproj`. UI: `#songsterrSmooth` under the chosen video
+   in the wizard's Extra, `#smoothBarChk` in Exportar → Opções da construção (shown for a
+   video-timed project, a pending edit like DD), ⓘ `smooth-bars`. Guarded by
+   `test_smooth_bar_times.py` (one mark off, a small error left, a fermata, a recording at
+   another tempo, a run, the ends, a real GP5 timed both ways — the pair rule, the local tempo
+   and the parser wiring each mutation-checked),
+   `test_smoothing_a_videos_bar_times_is_chosen_stored_and_reaches_the_build` and
+   `test_the_worker_smooths_the_bar_times_when_the_job_asks`; with Playwright (PT 1440 / EN
+   760 px): the wizard with Songsterr faked sends it only when ticked, and on an invented
+   project with bar 7 marked 0.27 s early a real rebuild moved bar 7 by 0.27 s with the warning
+   "bars 7", no page errors. Not tried on the reporter's song from here.
+
    Never run against the real Songsterr from here (blocked) — TESTING.md
    §7d-quinquies. Guarded by `test_songsterr_gp.py` (a note-for-note round trip
    through `parse_gp_track`: ties, triplets, dead notes, hammer target, bend,

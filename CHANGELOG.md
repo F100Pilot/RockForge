@@ -6,6 +6,16 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novidades
+
+- **Suavizar os tempos de um vídeo do Songsterr.** Os tempos de compasso que o Songsterr guarda
+  para um vídeo são marcados à mão, e às vezes um fica fora do sítio: o compasso anterior fica
+  curto, o seguinte comprido, e as notas desse compasso chegam cedo ou tarde. Com **Suavizar os
+  tempos do vídeo** ligado (no passo 3 do novo projeto, ou em **Exportar → Opções da
+  construção**), uma marca fora do sítio entre duas vizinhas que batem com o andamento da tab
+  passa para onde a tab a põe. Uma mudança de andamento verdadeira fica como está, e os avisos
+  dizem que compassos mudaram. Vem desligado.
+
 ## [0.12.0 beta 12] — 2026-11-17
 
 ### Novidades

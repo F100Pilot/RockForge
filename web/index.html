@@ -1959,6 +1959,8 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           <div class="pv-row" style="flex-wrap:wrap;gap:1.2rem">
             <label class="check"><input type="checkbox" id="muteChk" form="rebuildForm" checked> Palm mute / slap / tap</label>
             <label class="check" title="Desliga a dificuldade dinâmica no PSARC nativo — uma única dificuldade com todas as notas. Útil se o DD estiver a dar problemas."><input type="checkbox" id="ddChk" form="rebuildForm" checked> Dificuldade dinâmica</label>
+            <span id="smoothBarRow" hidden style="display:inline-flex;align-items:center;gap:.4rem;white-space:nowrap"><label class="check"><input type="checkbox" id="smoothBarChk" form="rebuildForm"> Suavizar os tempos do vídeo</label>
+              <button type="button" class="info-btn" data-info="smooth-bars">ⓘ</button></span>
           </div>
           <div class="pv-row" id="backingRow" hidden>
             <label for="backingSel">Gravação:</label>
@@ -2428,6 +2430,11 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           </div>
           <select id="songsterrVideo" style="margin-top:.4rem;width:100%" hidden></select>
           <p class="meta" id="songsterrInfo" style="margin:.35rem 0 0"></p>
+          <div id="songsterrSmoothRow" hidden style="margin-top:.5rem">
+            <span style="display:inline-flex;align-items:center;gap:.4rem"><label class="check"><input type="checkbox" id="songsterrSmooth"> Suavizar os tempos do vídeo</label>
+              <button type="button" class="info-btn" data-info="smooth-bars">ⓘ</button></span>
+            <p class="meta" style="margin:.2rem 0 0">Uma marca fora do sítio entre duas vizinhas que batem com o andamento da tab passa para onde a tab a põe. Uma mudança verdadeira de andamento fica como está.</p>
+          </div>
         </details>
       </div>
 

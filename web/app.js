@@ -150,6 +150,7 @@ function resetSongsterr() {
   document.getElementById('songsterrLink').value = '';
   document.getElementById('songsterrVideo').hidden = true;
   document.getElementById('songsterrInfo').textContent = '';
+  document.getElementById('songsterrSmoothRow').hidden = true;
 }
 // Step 1 took another file (a GP upload or a PDF) after a Songsterr import:
 // that tab's times — its tempo map, a video's points, the video's audio and
@@ -203,6 +204,7 @@ function applySongsterrVideo() {
   const info = document.getElementById('songsterrInfo');
   const v = songsterrSong && sel.value !== '' ? songsterrSong.videos[Number(sel.value)] : null;
   songsterrPoints = v ? v.points : null;
+  document.getElementById('songsterrSmoothRow').hidden = !v;
   if (v) {
     // The recording these times belong to is that video's audio: its link
     // goes to the download block, one click away.
@@ -246,6 +248,7 @@ async function fetchSongsterrVideos() {
     songsterrSong = await getJSON(`/songsterr?song=${encodeURIComponent(link)}`);
   } catch (err) {
     songsterrSong = null; songsterrPoints = null; sel.hidden = true;
+    document.getElementById('songsterrSmoothRow').hidden = true;
     info.textContent = T('Erro: {m}', { m: err.message || err });
     return;
   }
@@ -2167,6 +2170,12 @@ const INFO = {
       T('<p>Várias pistas: escolhe vários ficheiros de uma vez, <strong>um por pista</strong>, pela ordem das pistas (até 7).</p>') +
       T('<p>Limites: a leitura de imagens (OCR) é experimental — lê os números, as linhas das cordas, as barras de compasso e as técnicas escritas (H/P, P.M., let ring, harmónicos), os slides, o vibrato, as ligaduras e os bends; numa tab sem notação rítmica o ritmo é estimado pelo espaçamento. Confere sempre as notas na partitura depois de criar o projeto. Precisa do conversor instalado (⚙️ Definições → Software externo).</p>')
   },
+  'smooth-bars': {
+    title: T('Suavizar os tempos do vídeo'),
+    body: T('<p>Os tempos de compasso que o Songsterr guarda para um vídeo são marcados à mão (ou gerados), e às vezes um fica fora do sítio: o compasso antes dele fica curto, o seguinte fica comprido, e as notas desse compasso chegam cedo ou tarde. Sem esta opção, o RockForge põe cada compasso exatamente na sua marca.</p>') +
+      T('<p>Com ela, uma marca que fica a mais de 80 ms de onde o andamento da tab a põe entre as duas vizinhas passa para esse sítio — só quando essas duas vizinhas batem com o andamento à volta. Um compasso segurado de propósito (uma fermata) ou uma mudança de andamento verdadeira não muda. Os avisos técnicos da construção dizem que compassos mudaram.</p>') +
+      T('<p>É uma suposição sobre as marcas, não uma medição da gravação: se a música varia mesmo nesses compassos, deixa-a desligada.</p>')
+  },
   'songsterr-sync': {
     title: T('Sincronizar uma tab do Songsterr'),
     body: T('<p>O RockForge escreve a tab num ficheiro Guitar Pro. Um ficheiro assim guarda o andamento em BPM inteiros e só no início de cada compasso, por isso não consegue seguir sozinho uma tab cujo andamento acompanha uma gravação (117,85 BPM, uma mudança a meio do compasso). O tempo de cada compasso vem então de uma de duas fontes, e cada uma só bate com a sua gravação:</p>') +
@@ -3100,6 +3109,8 @@ async function selectJob(id, { poll = false, force = false } = {}) {
 
   document.getElementById('muteChk').checked = j.import_mutes !== false;
   document.getElementById('ddChk').checked = j.dynamic_difficulty !== false;
+  document.getElementById('smoothBarChk').checked = !!j.smooth_bar_times;
+  document.getElementById('smoothBarRow').hidden = !j.video_bar_times;
   renderBackingRow();
   if (j.status === 'completed' && j.bundle_available) {
     // Load arrangements (heavy: decodes the full recording, resets the audio
@@ -6561,6 +6572,7 @@ async function applyAllNow(opts = {}) {
       other_sync: applyToAll ? null : otherPendingSync(),
       import_mutes: document.getElementById('muteChk').checked,
       dynamic_difficulty: document.getElementById('ddChk').checked,
+      smooth_bar_times: selectedJob && selectedJob.video_bar_times ? document.getElementById('smoothBarChk').checked : null,
       // Sent only when changed: null keeps it, "" is the whole recording again.
       backing_without: isGpJob() && document.getElementById('backingSel').value !== (selectedJob.backing_without || '')
         ? document.getElementById('backingSel').value : null,
@@ -10258,6 +10270,7 @@ function pendingSnapshot() {
     songEnd: document.getElementById('songEndS').value,
     mutes: document.getElementById('muteChk').checked,
     dd: document.getElementById('ddChk').checked,
+    smooth: document.getElementById('smoothBarChk').checked,
     backing: document.getElementById('backingSel').value,
     tempo, anchors,
     notes: JSON.parse(JSON.stringify(noteOverridesByKind)),
@@ -10282,6 +10295,7 @@ function restorePending(snap) {
     document.getElementById('songEndS').value = snap.songEnd || '';
     document.getElementById('muteChk').checked = snap.mutes;
     document.getElementById('ddChk').checked = snap.dd;
+    document.getElementById('smoothBarChk').checked = !!snap.smooth;
     const bsel = document.getElementById('backingSel');
     if (bsel && [...bsel.options].some(o => o.value === (snap.backing || ''))) bsel.value = snap.backing || '';
     renderBackingInfo();
@@ -10443,7 +10457,7 @@ function updateUndoButtons() {
 }
 document.getElementById('undoBtn').addEventListener('click', undoPending);
 document.getElementById('redoBtn').addEventListener('click', redoPending);
-for (const id of ['leadInS', 'songEndS', 'muteChk', 'ddChk', 'backingSel'])
+for (const id of ['leadInS', 'songEndS', 'muteChk', 'ddChk', 'smoothBarChk', 'backingSel'])
   document.getElementById(id).addEventListener('change', () => { updatePendingChangesInfo(); notePendingChange(); });
 // "Fim da música": seconds of the recording file, the clock the lyrics use
 // (the playhead minus the built intro silence). Empty = the recording's end.
@@ -15341,6 +15355,9 @@ document.getElementById('gpJobForm').addEventListener('submit', async e => {
   if (barTimes) {
     f.set('bar_times', JSON.stringify(barTimes.times));
     f.set('bar_times_source', barTimes.source);
+    // A video's marks only (the tab's own tempo map is exact): GitHub issue #26.
+    if (barTimes.source.startsWith('songsterr:') && document.getElementById('songsterrSmooth').checked)
+      f.set('smooth_bar_times', 'true');
   }
   // Unchecked checkboxes are not sent; set the value explicitly so "off" sticks.
   f.set('import_mutes', e.target.querySelector('input[name=import_mutes]').checked);

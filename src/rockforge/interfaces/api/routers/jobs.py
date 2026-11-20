@@ -114,6 +114,9 @@ def create_gp_job(
     # Songsterr timestamps /songsterr returned for the video the user picked.
     bar_times: str = Form(""),
     bar_times_source: str = Form(""),
+    # Move the video's marks that sit off between their neighbours back where the
+    # tab's tempo puts them (sync_map.smooth_bar_times). Off unless sent.
+    smooth_bar_times: bool = Form(False),
     lead_track: str = Form(""),
     rhythm_track: str = Form(""),
     combo_track: str = Form(""),
@@ -285,6 +288,8 @@ def create_gp_job(
         }
         if parsed_estimated_bars:
             params["estimated_bars"] = parsed_estimated_bars
+        if smooth_bar_times and api._video_bar_times(params):
+            params["bar_times_smooth"] = True
         if lead_track.strip().isdecimal():
             params["lead_track"] = int(lead_track)
         if rhythm_track.strip().isdecimal():

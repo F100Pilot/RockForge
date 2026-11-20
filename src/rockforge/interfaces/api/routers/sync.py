@@ -376,6 +376,11 @@ def rebuild_job(job_id: str, payload: RebuildIn) -> JobOut:
             params["import_mute_techniques"] = payload.import_mutes
         if payload.dynamic_difficulty is not None:
             params["dynamic_difficulty"] = payload.dynamic_difficulty
+        if payload.smooth_bar_times is not None:
+            if payload.smooth_bar_times:
+                params["bar_times_smooth"] = True
+            else:
+                params.pop("bar_times_smooth", None)
         if payload.backing_without is not None:
             _set_backing_without(params, payload.backing_without, original.source_type)
         if payload.lyrics_events is not None:

@@ -182,6 +182,12 @@ baixo no jogo com a referência a 220 Hz. Um baixo de 6 cordas faz-se como guita
   áudio?" para o descarregares) e o ficheiro tem de ser a tab do Songsterr. Depois de importar
   do Songsterr no passo 1 com a opção do vídeo, isto vem feito: vídeo escolhido e áudio
   descarregado.
+  **Suavizar os tempos do vídeo** (desligado por omissão): os tempos de um vídeo são marcados à
+  mão e às vezes um compasso fica fora do sítio (o anterior fica curto, o seguinte comprido, e
+  as notas desse compasso chegam cedo ou tarde). Ligado, cada marca que fica fora do sítio entre
+  duas vizinhas que batem com o andamento da tab passa para onde a tab a põe; uma mudança de
+  andamento verdadeira fica como está. Os avisos técnicos da construção dizem que compassos
+  mudaram. Também se liga ou desliga depois, em **Exportar → Opções da construção**.
 
 ### Passo 4 — Detalhes
 
@@ -861,7 +867,9 @@ campo. A afinação das cordas (Drop D, Eb…) muda-se em cada pista em **Editar
 e afinação**.
 
 Importar palm mute / slap / tap, e **Dificuldade dinâmica** (desliga para uma única dificuldade com
-todas as notas, se o DD der problemas numa música).
+todas as notas, se o DD der problemas numa música). Numa música sincronizada pelos tempos de
+um vídeo do Songsterr aparece também **Suavizar os tempos do vídeo** (ver o passo 3 do novo
+projeto).
 
 **Gravação** — **sem um instrumento**: constrói a versão com a gravação sem, por exemplo, o
 baixo, para o tocares tu por cima da música. Precisa de **Separar instrumentos** (no menu

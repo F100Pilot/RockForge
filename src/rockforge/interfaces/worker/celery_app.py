@@ -414,6 +414,7 @@ def generate_cdlc(job_id: str) -> None:
                     },
                     import_mute_techniques=bool(params.get("import_mute_techniques", True)),
                     bar_times=tuple(float(x) for x in params.get("bar_times") or ()),
+                    smooth_bar_times=params.get("bar_times_smooth") is True,
                     section_overrides=(
                         [
                             Section(name=str(s["name"]), start_time=float(s["time"]), number=0)

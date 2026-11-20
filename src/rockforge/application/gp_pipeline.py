@@ -449,6 +449,10 @@ class GpJobSpec:
     # its meaning) before tempo_scale and the anchor stages, which then only
     # correct whatever those times got wrong. Empty = the file's own timing.
     bar_times: tuple[float, ...] = ()
+    # Move the bar times that sit off between their neighbours back where the
+    # tab's tempo puts them (``sync_map.smooth_bar_times``) — GitHub issue #26,
+    # a Songsterr video's marks jittering by 0.1-0.3 s. Off by default.
+    smooth_bar_times: bool = False
     # When False, the mute/attack techniques (palm mute, slap, pop, tap) are
     # stripped from every note so they import as plain notes. These are the
     # techniques that change the Rocksmith note sprite (the palm-mute chevron
@@ -900,7 +904,7 @@ class GenerateFromGpUseCase:
         try:
             extra = parse_gp_track(
                 spec.gp_path, extra_idx, score_shift, tempo_scale, spec.bar_times or None,
-                bass=kind.is_bass,
+                bass=kind.is_bass, smooth=spec.smooth_bar_times,
             )
         except (IngestionError, IndexError, ValueError) as exc:
             warnings.append(f"{kind.value}: track {extra_idx + 1} was not merged ({exc})")
@@ -1006,7 +1010,7 @@ class GenerateFromGpUseCase:
             sync = spec.sync_for(kind)
             p = parse_gp_track(
                 spec.gp_path, idx, score_shift, sync.tempo_scale, spec.bar_times or None,
-                bass=kind.is_bass,
+                bass=kind.is_bass, smooth=spec.smooth_bar_times,
             )
             warnings.extend(f"{kind.value}: {w}" for w in p.warnings)
             merge = spec.merge_tracks.get(kind.value)

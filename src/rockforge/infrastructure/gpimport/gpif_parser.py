@@ -73,6 +73,8 @@ from rockforge.infrastructure.gpimport.sync_map import (
     bar_time_points,
     bar_times_warnings,
     relative_to_bar_one,
+    smooth_bar_times,
+    smoothed_bar_times_warning,
 )
 from rockforge.infrastructure.ingestion.sources import ALLOWED_SUFFIXES
 
@@ -678,6 +680,7 @@ def parse_gpif_track(
     bar_times: Sequence[float] | None = None,
     *,
     bass: bool = False,
+    smooth: bool = False,
 ) -> ParsedGpTrack:
     """Convert one GP7/GP8 track to RockForge domain objects.
 
@@ -725,6 +728,11 @@ def parse_gpif_track(
     to_seconds = _make_ticks_to_seconds(
         _tempo_events(root, bar_start_ticks, written_durations, played)
     )
+    smoothed: list[int] | None = None
+    if bar_times and smooth:
+        bar_times, smoothed = smooth_bar_times(
+            bar_times, [float(to_seconds(tick)) for tick in bar_start_ticks]
+        )
     if bar_times:
         # Externally supplied per-bar times (Songsterr) win over GP8's own sync
         # points: the user chose them for THIS recording.
@@ -860,6 +868,8 @@ def parse_gpif_track(
         warnings.append(jump_convention_warning())
     if bar_times:
         warnings.extend(bar_times_warnings(len(bar_start_ticks), len(bar_times), sync_skipped))
+        if smoothed is not None:
+            warnings.append(smoothed_bar_times_warning(smoothed))
     elif sync:
         warnings.append(
             f"Guitar Pro 8 audio sync used: {len(sync)} sync points re-time the "

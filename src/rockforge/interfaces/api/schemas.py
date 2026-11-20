@@ -72,6 +72,10 @@ class JobOut(BaseModel):
     tempo_scale: float
     import_mutes: bool
     dynamic_difficulty: bool = True
+    # The chart is timed on a YouTube video's per-bar marks (Songsterr) — not
+    # the tab's own tempo map — and whether those marks are smoothed.
+    video_bar_times: bool = False
+    smooth_bar_times: bool = False
     # The separated instrument this version's recording leaves out (a backing
     # track: "bass" → the song "… (no bass)"), or None for the whole recording.
     backing_without: str | None = None
@@ -176,6 +180,10 @@ class RebuildIn(BaseModel):
     import_mutes: bool | None = None
     # When False, the native PSARC's SNG is a single full-chart level (no DD).
     dynamic_difficulty: bool | None = None
+    # GP with a video's bar times (Songsterr): move the marks that sit off
+    # between their neighbours back where the tab's tempo puts them. None
+    # leaves it unchanged.
+    smooth_bar_times: bool | None = None
     # GP: build the song from the recording WITHOUT this separated instrument
     # ("Separar instrumentos" must have run): a name of params["stems"], or ""
     # for the whole recording again. None leaves it unchanged.

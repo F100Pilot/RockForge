@@ -57,7 +57,7 @@ PORTABLE_KEYS = frozenset({
     "offset_s", "lead_in_s", "song_end_s", "tempo_scale", "cent_offset",
     "sync_anchor_stages", "arrangement_sync", "sync_main",
     "sync_confirmed", "synced_arrangements", "gp_synced",
-    "bar_times", "bar_times_source", "estimated_bars",
+    "bar_times", "bar_times_source", "bar_times_smooth", "estimated_bars",
     "lead_track", "rhythm_track", "combo_track", "alt_lead_track", "alt_rhythm_track",
     "bass_track", "merge_tracks", "tuning_overrides", "bass_reference",
     "backing_without",

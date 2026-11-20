@@ -150,6 +150,28 @@ def test_the_jobs_edits_follow_the_chart_to_its_new_name(db, tmp_path, monkeypat
     assert set(params["arrangement_sync"]) == {"Combined"}
 
 
+def test_the_worker_smooths_the_bar_times_when_the_job_asks(db, tmp_path, monkeypatch) -> None:
+    """``params["bar_times_smooth"]`` reaches the parser (GitHub issue #26):
+    the build's warnings say the bar times were smoothed, and not without it."""
+    from rockforge.application.gp_pipeline import GenerateFromGpUseCase
+
+    gp_path = _make_gp5(tmp_path)
+    monkeypatch.setattr(
+        ca, "_build_gp_use_case",
+        lambda: GenerateFromGpUseCase(
+            ingestor=_FakeIngestor(), normalizer=_FakeNormalizer(), packager=_FakePackager()
+        ),
+    )
+    base = {"gp_path": str(gp_path), "lead_track": 0, "bar_times": [1.0, 3.0, 5.0],
+            "bar_times_source": "songsterr:1:1"}
+    smoothed = _job(db, params={**base, "bar_times_smooth": True})
+    plain = _job(db, params=base)
+    ca.generate_cdlc(smoothed)
+    ca.generate_cdlc(plain)
+    assert any("smoothed" in w for w in _reload(db, smoothed).warnings or [])
+    assert not any("smoothed" in w for w in _reload(db, plain).warnings or [])
+
+
 def test_a_psarc_built_without_sound_says_so_and_why(db, tmp_path, monkeypatch) -> None:
     """A .psarc with no .wem plays silence: the job records it, and a Wwise that
     was found but failed to convert keeps its own error — before, both read as

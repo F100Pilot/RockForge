@@ -54,6 +54,8 @@ from rockforge.infrastructure.gpimport.sync_map import (
     bar_time_points,
     bar_times_warnings,
     relative_to_bar_one,
+    smooth_bar_times,
+    smoothed_bar_times_warning,
 )
 
 QUARTER_TICKS = 960
@@ -418,8 +420,12 @@ def parse_gp_track(
     bar_times: Sequence[float] | None = None,
     *,
     bass: bool = False,
+    smooth: bool = False,
 ) -> ParsedGpTrack:
     """Convert one Guitar Pro track to RockForge domain objects.
+
+    ``smooth`` moves bar times that sit off between their neighbours back where
+    the score puts them (``sync_map.smooth_bar_times``) before they re-time it.
 
     ``bass`` reads it as a bass chart: a 4- or 5-string track, folded onto four
     strings with a bass tuning (``strings.fold_strings``); otherwise a guitar's
@@ -444,7 +450,9 @@ def parse_gp_track(
     from rockforge.infrastructure.gpimport.gpif_parser import _is_gpif, parse_gpif_track
 
     if _is_gpif(path):
-        return parse_gpif_track(path, track_index, offset_s, tempo_scale, bar_times, bass=bass)
+        return parse_gpif_track(
+            path, track_index, offset_s, tempo_scale, bar_times, bass=bass, smooth=smooth
+        )
     written = _load(path)
     _check_time_signatures(written)
     jump_convention = jump_skips_repeats(_bar_flows(written))
@@ -461,6 +469,11 @@ def parse_gp_track(
     to_seconds = _make_ticks_to_seconds(_tempo_events(track))
     origin = QUARTER_TICKS  # measure 1 starts at tick 960; song time 0
     bar_ticks = [m.start - origin for m in track.measures]
+    smoothed: list[int] | None = None
+    if bar_times and smooth:
+        bar_times, smoothed = smooth_bar_times(
+            bar_times, [float(to_seconds(tick)) for tick in bar_ticks]
+        )
     bar_points, bar_skipped = bar_time_points(bar_ticks, bar_times or [])
     to_seconds = relative_to_bar_one(to_seconds, bar_points)
 
@@ -691,6 +704,8 @@ def parse_gp_track(
         warnings.append(jump_convention_warning())
     if bar_times:
         warnings.extend(bar_times_warnings(len(bar_ticks), len(bar_times), bar_skipped))
+    if smoothed is not None:
+        warnings.append(smoothed_bar_times_warning(smoothed))
     if dropped_out_of_range:
         warnings.append(
             f"{dropped_out_of_range} note(s) dropped: off the 24-fret neck "

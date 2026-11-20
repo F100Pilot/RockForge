@@ -1504,6 +1504,54 @@ def test_a_gp_job_stores_the_bar_times_it_was_created_with(client: TestClient, t
         assert job.params["bar_times_source"] == "songsterr:42:7"
 
 
+def test_smoothing_a_videos_bar_times_is_chosen_stored_and_reaches_the_build(
+    client: TestClient,
+) -> None:
+    """GitHub issue #26: the marks of a Songsterr video can sit off; smoothing
+    them is the user's choice — in the wizard and later on a rebuild — and only
+    for a video's marks (the tab's own tempo map is exact)."""
+    import rockforge.interfaces.api.app as app_module
+    from rockforge.infrastructure.db.models import Job
+
+    def create(source: str, smooth: str | None) -> dict:
+        body = client.post(
+            "/gp/inspect", files={"file": ("s.gp", _gp8_with_embedded_audio(b"ID3x"), "x")}
+        ).json()
+        data = {
+            "gp_token": body["gp_token"], "lead_track": "0", "use_embedded_audio": "true",
+            "bar_times": "[1.0, 2.0, 3.0]", "bar_times_source": source,
+        }
+        if smooth is not None:
+            data["smooth_bar_times"] = smooth
+        r = client.post("/jobs/gp", data=data)
+        assert r.status_code == 202, r.text
+        return r.json()
+
+    def params(job_id: str) -> dict:
+        with app_module._session_factory() as db:
+            job = db.get(Job, job_id)
+            assert job is not None
+            return dict(job.params or {})
+
+    video = create("songsterr:42:7", "true")
+    assert params(video["id"])["bar_times_smooth"] is True
+    assert video["video_bar_times"] is True and video["smooth_bar_times"] is True
+    plain = create("songsterr:42:7", None)  # not sent = off
+    assert "bar_times_smooth" not in params(plain["id"])
+    assert plain["video_bar_times"] is True and plain["smooth_bar_times"] is False
+    tab = create("songsterr-tab:42:7", "true")  # the tab's own map: nothing to smooth
+    assert "bar_times_smooth" not in params(tab["id"])
+    assert tab["video_bar_times"] is False
+
+    on = client.post(f"/jobs/{plain['id']}/rebuild", json={"smooth_bar_times": True})
+    assert on.status_code == 202, on.text
+    assert params(on.json()["id"])["bar_times_smooth"] is True
+    kept = client.post(f"/jobs/{on.json()['id']}/rebuild", json={})
+    assert params(kept.json()["id"])["bar_times_smooth"] is True
+    off = client.post(f"/jobs/{kept.json()['id']}/rebuild", json={"smooth_bar_times": False})
+    assert "bar_times_smooth" not in params(off.json()["id"])
+
+
 # "[-1, 2]" left out on purpose: negative times are now ACCEPTED — Songsterr
 # markers can begin before the video's first second (a count-in at t<0), and
 # bar_time_points keeps them as ordinary points (bar 1 then starts before the audio).
