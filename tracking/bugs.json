@@ -20787,15 +20787,17 @@
       "observed": "The X drawn at the stored fret (5) beside a chord at frets 10/12.",
       "severity": "Low",
       "priority": "P3",
-      "status": "In Progress",
+      "status": "Fixed",
       "root_cause": "Both GP parsers kept a dead note's stored fret, and the XML/SNG carry the fret the game draws the X at.",
-      "fixes": [],
+      "fixes": [
+        "FIX-0416"
+      ],
       "verified_by": "pending",
       "verification": "pending",
       "evidence": [
         "https://github.com/F100Pilot/RockForge/issues/30#issuecomment-7070228246"
       ],
-      "resolved": "pending",
+      "resolved": "2026-11-21",
       "closed": "pending",
       "history": [
         {
@@ -20812,6 +20814,11 @@
           "date": "2026-11-21",
           "status": "In Progress",
           "note": "a muted string in a chord takes the chord's lowest fretted fret"
+        },
+        {
+          "date": "2026-11-21",
+          "status": "Fixed",
+          "note": "FIX-0416 (26f8498)"
         }
       ]
     }

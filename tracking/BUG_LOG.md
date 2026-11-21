@@ -4,9 +4,9 @@
 
 Every bug found in RockForge, with a permanent id; the full record of each is on its module's page in [bugs/](bugs). Rules and states: [docs/VERSIONING.md](../docs/VERSIONING.md#bugs). Fixes: [FIX_LOG.md](FIX_LOG.md). Releases: [RELEASE_LOG.md](RELEASE_LOG.md).
 
-| In Progress | Fixed | Verified | Closed |
-|---|---|---|---|
-| 1 | 139 | 60 | 217 |
+| Fixed | Verified | Closed |
+|---|---|---|
+| 140 | 60 | 217 |
 
 | ID | Title | Module | Severity | Priority | Status | Found in | Fixed in |
 |---|---|---|---|---|---|---|---|
@@ -426,4 +426,4 @@ Every bug found in RockForge, with a permanent id; the full record of each is on
 | [BUG-0414](bugs/editor.md#bug-0414) | Moving a note in the note editor left the old note and put the new one at its time from before a sync correction | editor | High | P2 | Fixed | 0.12.0-beta.10 | 0.12.0-beta.11 |
 | [BUG-0415](bugs/import.md#bug-0415) | A slide into a note turned the picked note before it into a slide the tab does not have | import | Medium | P2 | Fixed | 0.12.0-beta.10 | 0.12.0-beta.11 |
 | [BUG-0416](bugs/viewer.md#bug-0416) | A dead note in a chord lit the neck at its stored fret and gave its pitch to the chord's name | viewer | Low | P3 | Fixed | 0.12.0-beta.11 | 0.12.0-beta.12 |
-| [BUG-0417](bugs/import.md#bug-0417) | A muted string in a chord kept the tab's stored fret, so the game drew its X outside the chord | import | Low | P3 | In Progress | 0.12.0-beta.12 | — |
+| [BUG-0417](bugs/import.md#bug-0417) | A muted string in a chord kept the tab's stored fret, so the game drew its X outside the chord | import | Low | P3 | Fixed | 0.12.0-beta.12 | — |

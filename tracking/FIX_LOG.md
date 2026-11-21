@@ -421,6 +421,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0413](#fix-0413) | BUG-0414 | 0.12.0-beta.11 | pending | pending |
 | [FIX-0414](#fix-0414) | BUG-0415 | 0.12.0-beta.11 | passed | automated |
 | [FIX-0415](#fix-0415) | BUG-0416 | 0.12.0-beta.12 | passed | automated |
+| [FIX-0416](#fix-0416) | BUG-0417 | unreleased | passed | automated |
 
 ## FIX-0001
 
@@ -9136,3 +9137,24 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Test result | passed |
 | Validation | automated |
 | Regression risk | Low: only chords with a muted string change name; a template shared by a muted and an unmuted chord takes the name of the first. |
+
+## FIX-0416
+
+**Bugs:** [BUG-0417](bugs/import.md#bug-0417)
+
+**Root cause:** Both GP parsers kept a dead note's stored fret, and the XML/SNG carry the fret the game draws the X at.
+
+**Solution:** chords.place_dead_strings_in_chords, run by both parsers after expand_slide_ins: a fret-hand-muted note in a chord with a fretted note takes the chord's lowest fretted fret (its slide moved by the same amount); a lone X, one beside only open strings, or one whose slide would leave the neck keeps its fret.
+
+| | |
+|---|---|
+| Date | 2026-11-21 |
+| By | Claude (AI coding assistant) on the maintainer's request |
+| Version | unreleased |
+| Commits | 26f8498 |
+| Components | import |
+| Tests | tests/test_chords.py::test_a_muted_string_in_a_chord_sits_on_the_chords_lowest_fret; tests/test_songsterr_gp.py::test_a_muted_string_in_a_songsterr_chord_is_charted_inside_the_chord; tests/test_gpif_import.py::test_gp7_a_muted_string_in_a_chord_sits_on_the_chords_lowest_fret |
+| Manual checks | — |
+| Test result | passed |
+| Validation | automated |
+| Regression risk | Low: only the fret of a muted string inside a chord changes; it was never a pitch the game scores. Not seen in game. |
