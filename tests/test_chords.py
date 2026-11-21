@@ -147,3 +147,41 @@ def test_a_dead_string_is_left_out_of_the_chords_name() -> None:
     # The same frets with the A string played are the power chord.
     played = [TabNote(string=n.string, fret=n.fret, time=0.0, sustain=0.0) for n in notes]
     assert chord_display(frets, played, (40, 45, 50, 55, 59, 64))[1] == "A#5"
+
+
+def test_a_muted_string_in_a_chord_sits_on_the_chords_lowest_fret() -> None:
+    """GitHub issue #30: the tab's octave 10 X 12 carried fret 5 on the muted A
+    string, and the game draws an X at the fret the note carries, so it showed
+    up outside the chord. It goes where the index finger mutes it; a slide
+    moves with it; a lone X, or one in a chord of open strings, keeps its fret."""
+    from rockforge.domain.chords import place_dead_strings_in_chords
+    from rockforge.domain.music import Technique
+
+    dead = frozenset({Technique.FRET_MUTE})
+    octave = [
+        TabNote(string=0, fret=10, time=0.0, sustain=0.0),
+        TabNote(string=1, fret=5, time=0.0, sustain=0.0, techniques=dead),
+        TabNote(string=2, fret=12, time=0.0, sustain=0.0),
+    ]
+    sliding = [
+        TabNote(string=0, fret=10, time=1.0, sustain=0.5, slide_to_fret=12),
+        TabNote(string=1, fret=5, time=1.0, sustain=0.5, slide_to_fret=7,
+                techniques=dead | {Technique.SLIDE}),
+    ]
+    alone = [TabNote(string=1, fret=5, time=2.0, sustain=0.0, techniques=dead)]
+    open_chord = [
+        TabNote(string=0, fret=0, time=3.0, sustain=0.0),
+        TabNote(string=1, fret=5, time=3.0, sustain=0.0, techniques=dead),
+    ]
+    off_neck = [
+        TabNote(string=0, fret=20, time=4.0, sustain=0.0),
+        TabNote(string=1, fret=2, time=4.0, sustain=0.3, slide_to_fret=22,
+                techniques=dead),
+    ]
+    out = place_dead_strings_in_chords(octave + sliding + alone + open_chord + off_neck)
+    assert [n.fret for n in out[:3]] == [10, 10, 12]
+    assert out[1].techniques == dead
+    assert (out[4].fret, out[4].slide_to_fret) == (10, 12)
+    assert out[5].fret == 5          # alone
+    assert out[7].fret == 5          # only an open string beside it
+    assert (out[9].fret, out[9].slide_to_fret) == (2, 22)  # 20 + 20 is off the neck

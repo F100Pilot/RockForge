@@ -5450,7 +5450,17 @@ finger, where the hand mutes it), and the neck under the score lights it grey
 with an X (`updateFretboard`) instead of its stored fret. Guarded by
 `test_a_dead_string_is_left_out_of_the_chords_name` and the octave in
 `test_a_dead_string_in_a_chord_reaches_the_score_as_a_mute` (both fail without
-the fix); the neck with Playwright (PT 1440 / EN 760 px).
+the fix); the neck with Playwright (PT 1440 / EN 760 px). **And a dead string in a chord is CHARTED inside
+it** (`chords.place_dead_strings_in_chords`, both parsers, after `expand_slide_ins`;
+the issue's next screenshots, 2026-11-21): the tab's stored fret for an X is often
+unrelated (10 X 12 with the X on 5) and the game draws the X at the fret the note
+carries, so it showed outside the chord. It takes the chord's lowest fretted fret
+(the index finger); a slide moves with it; a lone X, one beside only open strings, or
+one whose slide would leave the neck keeps its fret. Guarded by
+`test_a_muted_string_in_a_chord_sits_on_the_chords_lowest_fret`,
+`test_a_muted_string_in_a_songsterr_chord_is_charted_inside_the_chord` and
+`test_gp7_a_muted_string_in_a_chord_sits_on_the_chords_lowest_fret` (the rule and
+both parsers' wiring mutation-checked). Not seen in game from here.
 
 **Repeated chords are marked HIGH DENSITY (condensed rendering).** A fast
 repeated identical chord — an 8th-note power-chord chug, say — must carry

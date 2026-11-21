@@ -1019,3 +1019,31 @@ def test_a_gp7_file_with_impossible_numbers_is_refused_in_words(
         inspect_gp(path)
     with pytest.raises(IngestionError):
         parse_gp_track(path, 0)
+
+
+def test_gp7_a_muted_string_in_a_chord_sits_on_the_chords_lowest_fret(tmp_path: Path) -> None:
+    """GitHub issue #30, read from a .gp: an octave 10 X 12 whose muted string
+    stores fret 5 is charted with the X on fret 10, inside the chord."""
+    def note(i: int, string: int, fret: int, muted: bool = False) -> str:
+        mute = '<Property name="Muted"><Enable/></Property>' if muted else ""
+        return (f'<Note id="{i}"><Properties><Property name="String"><String>{string}</String>'
+                f'</Property><Property name="Fret"><Fret>{fret}</Fret></Property>{mute}'
+                "</Properties></Note>")
+    notes = note(0, 0, 10) + note(1, 1, 5, muted=True) + note(2, 2, 12)
+    gpif = (GPIF.replace('<Beat id="0"><Rhythm ref="0"/><Notes>0</Notes></Beat>',
+                         '<Beat id="0"><Rhythm ref="0"/><Notes>0 1 2</Notes></Beat>')
+            .replace('<Beat id="1"><Rhythm ref="0"/><Notes>1</Notes></Beat>',
+                     '<Beat id="1"><Rhythm ref="0"/></Beat>')
+            .replace('<Beat id="2"><Rhythm ref="0"/><Notes>2</Notes></Beat>',
+                     '<Beat id="2"><Rhythm ref="0"/></Beat>')
+            .replace('<Beat id="3"><Rhythm ref="0"/><Notes>3</Notes></Beat>',
+                     '<Beat id="3"><Rhythm ref="0"/></Beat>'))
+    start, end = gpif.index("<Notes>\n    <Note"), gpif.index("</Notes>\n  <Rhythms>")
+    gpif = gpif[:start] + "<Notes>" + notes + gpif[end:]
+    path = tmp_path / "octave.gp"
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("VERSION", "7.0")
+        z.writestr("Content/score.gpif", gpif)
+    parsed = parse_gp_track(path, 0)
+    assert sorted((n.string, n.fret) for n in parsed.notes) == [(0, 10), (1, 10), (2, 12)]
+    assert [n.fret for n in parsed.notes if Technique.FRET_MUTE in n.techniques] == [10]

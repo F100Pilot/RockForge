@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import TypeVar
 
 from rockforge.domain.alphatab import alphatab_bend
+from rockforge.domain.chords import place_dead_strings_in_chords
 from rockforge.domain.errors import IngestionError
 from rockforge.domain.music import (
     Beat,
@@ -823,6 +824,7 @@ def parse_gpif_track(
     merged = _merge_ties(raw)  # collapse tie continuations into the held note
     notes = _resolve_techniques([n for n, _, _ in merged], merged)
     notes = expand_slide_ins(notes)  # scoops → lead-in slide notes
+    notes = place_dead_strings_in_chords(notes)  # an X inside its chord (#30)
     # Leave a small gap before the next note on the string (after slideTo is
     # resolved, so pitched slides keep their reach).
     notes = drop_short_sustains(notes, [b.time for b in beats_grid])  # a held note only

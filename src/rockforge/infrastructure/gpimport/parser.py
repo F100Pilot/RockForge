@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from rockforge.domain.alphatab import alphatab_bend
+from rockforge.domain.chords import place_dead_strings_in_chords
 from rockforge.domain.errors import IngestionError
 from rockforge.domain.music import (
     Beat,
@@ -661,6 +662,7 @@ def parse_gp_track(
 
     # Expand slide-into scoops into real lead-in slide notes before the gap trim.
     notes = expand_slide_ins(notes)
+    notes = place_dead_strings_in_chords(notes)  # an X inside its chord (#30)
     # Trim sustains so they end a small gap before the next note on the string,
     # instead of running right into it (done after slideTo is filled so pitched
     # slides keep their reach).

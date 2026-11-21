@@ -20769,6 +20769,51 @@
           "note": "FIX-0415 (a736709)"
         }
       ]
+    },
+    {
+      "id": "BUG-0417",
+      "title": "A muted string in a chord kept the tab's stored fret, so the game drew its X outside the chord",
+      "detected": "2026-11-21",
+      "reported_by": "a user, GitHub issue #30",
+      "found_in_version": "0.12.0-beta.12",
+      "found_in_build": "pending",
+      "module": "import",
+      "description": "A tab stores a fret for every fret-hand mute (X), and it is often unrelated to the chord: in the reporter's octaves 10 X 12 the muted A string carried fret 5. Rocksmith draws the X at the fret the note carries, so it appeared outside the chord's frame, which reads as a random fret. The beta 12 fix (BUG-0416) only changed RockForge's own neck and the chord name.",
+      "steps": [
+        "import a Songsterr tab with octaves whose muted middle string stores another fret (Queens of the Stone Age - Run, Run, Run solo)",
+        "build and play it in Rocksmith, or look at the neck under the score"
+      ],
+      "expected": "The X of a muted string drawn inside its chord, where the hand mutes it.",
+      "observed": "The X drawn at the stored fret (5) beside a chord at frets 10/12.",
+      "severity": "Low",
+      "priority": "P3",
+      "status": "In Progress",
+      "root_cause": "Both GP parsers kept a dead note's stored fret, and the XML/SNG carry the fret the game draws the X at.",
+      "fixes": [],
+      "verified_by": "pending",
+      "verification": "pending",
+      "evidence": [
+        "https://github.com/F100Pilot/RockForge/issues/30#issuecomment-7070228246"
+      ],
+      "resolved": "pending",
+      "closed": "pending",
+      "history": [
+        {
+          "date": "2026-11-21",
+          "status": "Open",
+          "note": "reported"
+        },
+        {
+          "date": "2026-11-21",
+          "status": "Triaged",
+          "note": "the screenshots show the X at fret 5 beside a 10/12 octave in game and on the neck"
+        },
+        {
+          "date": "2026-11-21",
+          "status": "In Progress",
+          "note": "a muted string in a chord takes the chord's lowest fretted fret"
+        }
+      ]
     }
   ]
 }

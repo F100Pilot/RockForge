@@ -11,6 +11,7 @@ name (the honesty principle — never label what we cannot identify).
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import replace
 
 from rockforge.domain.music import TabNote, Technique
 
@@ -333,6 +334,45 @@ def group_chords(notes: Sequence[TabNote]) -> list[list[TabNote]]:
         else:
             groups.append([n])
     return groups
+
+
+NECK_TOP_FRET = 24
+
+
+def place_dead_strings_in_chords(notes: Sequence[TabNote]) -> list[TabNote]:
+    """A muted string in a chord moved to the chord's lowest fretted fret.
+
+    A tab stores a fret for every dead note ("X"), and it often has nothing to
+    do with the chord (GitHub issue #30: an octave 10 X 12 whose X carried fret
+    5). Rocksmith draws the X at the fret the note carries, so it showed up
+    outside the chord. The hand mutes that string where its index finger lies,
+    the chord's lowest fretted fret, so that is where it goes. A slide moves
+    with it; a dead note alone, or in a chord with no fretted note, keeps its
+    fret, and so does one whose slide would leave the neck."""
+    moved: dict[int, TabNote] = {}
+    for grp in group_chords(notes):
+        frets = [n.fret for n in grp if n.fret > 0
+                 and Technique.FRET_MUTE not in n.techniques]
+        if not frets:
+            continue
+        index = min(frets)
+        for n in grp:
+            if Technique.FRET_MUTE not in n.techniques or n.fret == index:
+                continue
+            delta = index - n.fret
+            slide = n.slide_to_fret
+            if slide is not None:
+                slide += delta
+                if not 0 <= slide <= NECK_TOP_FRET:
+                    continue
+            unpitch = n.slide_unpitch_to
+            if unpitch is not None:
+                unpitch += delta
+                if not 0 <= unpitch <= NECK_TOP_FRET:
+                    continue
+            moved[id(n)] = replace(n, fret=index, slide_to_fret=slide,
+                                   slide_unpitch_to=unpitch)
+    return [moved.get(id(n), n) for n in notes]
 
 
 def technique_flags(notes: Sequence[TabNote], *, bass: bool) -> dict[str, int]:

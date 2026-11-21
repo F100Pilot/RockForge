@@ -2898,3 +2898,46 @@ A Guitar Pro / Songsterr slide INTO a note (/12) is turned into slides because R
 - 2026-11-12 — Triaged: the .gp marks Slide flags 16 on the 9 and the 12; the 8 before the 12 became its slide
 - 2026-11-12 — In Progress: the maintainer chose a lead-in linked to the target, never touching the note before
 - 2026-11-12 — Fixed: FIX-0414 (f19fd3f)
+
+## BUG-0417
+
+**A muted string in a chord kept the tab's stored fret, so the game drew its X outside the chord**
+
+| | |
+|---|---|
+| Detected | 2026-11-21 |
+| Reported by | a user, GitHub issue #30 |
+| Found in | 0.12.0-beta.12 |
+| Build / commit | _pending_ |
+| Severity | Low |
+| Priority | P3 |
+| Status | In Progress |
+
+A tab stores a fret for every fret-hand mute (X), and it is often unrelated to the chord: in the reporter's octaves 10 X 12 the muted A string carried fret 5. Rocksmith draws the X at the fret the note carries, so it appeared outside the chord's frame, which reads as a random fret. The beta 12 fix (BUG-0416) only changed RockForge's own neck and the chord name.
+
+**Steps to reproduce:** 
+
+1. import a Songsterr tab with octaves whose muted middle string stores another fret (Queens of the Stone Age - Run, Run, Run solo)
+2. build and play it in Rocksmith, or look at the neck under the score
+
+**Expected:** The X of a muted string drawn inside its chord, where the hand mutes it.
+
+**Observed:** The X drawn at the stored fret (5) beside a chord at frets 10/12.
+
+**Root cause:** Both GP parsers kept a dead note's stored fret, and the XML/SNG carry the fret the game draws the X at.
+
+**Fixes:** —
+
+**Verified:** _pending_ (by _pending_)
+
+**Resolved:** _pending_ · **Closed:** _pending_
+
+**Evidence:**
+
+- https://github.com/F100Pilot/RockForge/issues/30#issuecomment-7070228246
+
+**History:**
+
+- 2026-11-21 — Open: reported
+- 2026-11-21 — Triaged: the screenshots show the X at fret 5 beside a 10/12 octave in game and on the neck
+- 2026-11-21 — In Progress: a muted string in a chord takes the chord's lowest fretted fret

@@ -542,3 +542,21 @@ def test_a_capo_that_is_not_a_fret_is_read_as_none_and_said(tmp_path: Path, bad:
     parsed = parse_gp_track(dst, 0)
     assert parsed.capo == 0 and parsed.notes[0].fret == 3
     assert any("capo" in w for w in report.warnings)
+
+
+def test_a_muted_string_in_a_songsterr_chord_is_charted_inside_the_chord(tmp_path: Path) -> None:
+    """GitHub issue #30: the tab's octaves 10 X 12 store fret 5 for the muted
+    string; read through the GP5, the X sits on fret 10 with the chord."""
+    part = {
+        "name": "Lead", "instrument": "Distortion Guitar", "strings": 6, "tuning": STANDARD,
+        "automations": {"tempo": [{"measure": 0, "position": 0, "bpm": 120}]},
+        "measures": [{"signature": [4, 4], "voices": [{"beats": [
+            {"type": 2, "notes": [{"string": 5, "fret": 10}, {"string": 4, "fret": 5, "dead": True},
+                                  {"string": 3, "fret": 12}]},
+            {"type": 2, "notes": [{"string": 4, "fret": 5, "dead": True}]},
+        ]}]}],
+    }
+    dst, _ = _write(tmp_path, [part])
+    notes = parse_gp_track(dst, 0).notes
+    muted = [(round(n.time, 3), n.fret) for n in notes if Technique.FRET_MUTE in n.techniques]
+    assert muted == [(0.0, 10), (1.0, 5)]

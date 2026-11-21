@@ -16,6 +16,14 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
   passa para onde a tab a põe. Uma mudança de andamento verdadeira fica como está, e os avisos
   dizem que compassos mudaram. Vem desligado.
 
+### Correções
+
+- **O X de uma corda abafada fica dentro do acorde.** A tab guarda um traste para cada nota
+  abafada, e muitas vezes não tem nada a ver com o acorde (numa oitava 10 X 12, o X vinha no
+  traste 5). O jogo desenha o X nesse traste, fora do acorde. Agora uma corda abafada num acorde
+  fica no traste mais baixo do acorde, onde o indicador a abafa. Reconstrói a música para o ver
+  no jogo.
+
 ## [0.12.0 beta 12] — 2026-11-17
 
 ### Novidades

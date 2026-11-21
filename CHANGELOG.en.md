@@ -15,6 +15,13 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
   neighbours that agree with the tab's tempo moves to where the tab puts it. A real change of
   tempo stays as it is, and the warnings say which bars moved. It is off by default.
 
+### Fixes
+
+- **A muted string's X stays inside its chord.** A tab stores a fret for every muted note,
+  often unrelated to the chord (in a 10 X 12 octave the X came on fret 5). The game draws the X
+  at that fret, outside the chord. A muted string in a chord now sits on the chord's lowest fret,
+  where the index finger mutes it. Rebuild the song to see it in game.
+
 ## [0.12.0 beta 12] — 2026-11-17
 
 ### New
