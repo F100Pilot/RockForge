@@ -6,6 +6,8 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+## [0.12.0 beta 13] — 2026-11-21
+
 ### New
 
 - **Smooth a Songsterr video's bar times.** The bar times Songsterr keeps for a video are

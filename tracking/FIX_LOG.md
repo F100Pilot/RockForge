@@ -421,7 +421,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0413](#fix-0413) | BUG-0414 | 0.12.0-beta.11 | pending | pending |
 | [FIX-0414](#fix-0414) | BUG-0415 | 0.12.0-beta.11 | passed | automated |
 | [FIX-0415](#fix-0415) | BUG-0416 | 0.12.0-beta.12 | passed | automated |
-| [FIX-0416](#fix-0416) | BUG-0417 | unreleased | passed | automated |
+| [FIX-0416](#fix-0416) | BUG-0417 | 0.12.0-beta.13 | passed | automated |
 
 ## FIX-0001
 
@@ -9150,7 +9150,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 |---|---|
 | Date | 2026-11-21 |
 | By | Claude (AI coding assistant) on the maintainer's request |
-| Version | unreleased |
+| Version | 0.12.0-beta.13 |
 | Commits | 26f8498 |
 | Components | import |
 | Tests | tests/test_chords.py::test_a_muted_string_in_a_chord_sits_on_the_chords_lowest_fret; tests/test_songsterr_gp.py::test_a_muted_string_in_a_songsterr_chord_is_charted_inside_the_chord; tests/test_gpif_import.py::test_gp7_a_muted_string_in_a_chord_sits_on_the_chords_lowest_fret |

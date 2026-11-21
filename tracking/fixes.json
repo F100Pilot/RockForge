@@ -10494,7 +10494,7 @@
       "commits": [
         "26f8498"
       ],
-      "version": "unreleased",
+      "version": "0.12.0-beta.13",
       "tests": [
         "tests/test_chords.py::test_a_muted_string_in_a_chord_sits_on_the_chords_lowest_fret",
         "tests/test_songsterr_gp.py::test_a_muted_string_in_a_songsterr_chord_is_charted_inside_the_chord",

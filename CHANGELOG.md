@@ -6,6 +6,8 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+## [0.12.0 beta 13] — 2026-11-21
+
 ### Novidades
 
 - **Suavizar os tempos de um vídeo do Songsterr.** Os tempos de compasso que o Songsterr guarda

@@ -2926,7 +2926,7 @@ A tab stores a fret for every fret-hand mute (X), and it is often unrelated to t
 
 **Root cause:** Both GP parsers kept a dead note's stored fret, and the XML/SNG carry the fret the game draws the X at.
 
-**Fixes:** [FIX-0416](../FIX_LOG.md#fix-0416) (unreleased)
+**Fixes:** [FIX-0416](../FIX_LOG.md#fix-0416) (0.12.0-beta.13)
 
 **Verified:** _pending_ (by _pending_)
 

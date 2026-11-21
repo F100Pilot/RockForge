@@ -1,53 +1,35 @@
 ### New
 
-- **Slow down without changing the pitch.** On the Score, **Audio ▾ → Hear it better → Keep the
-  pitch when slowed down** (on by default): below 100 % speed the music plays slower without
-  dropping in pitch, and the cursor and the notes stay where the music is.
-- **A filter on playback**: in the same place, hear only the lows, only the mids or only the
-  highs of the music, with an adjustable frequency — it helps hear the beat or each note's
-  attack while syncing. The idea came from the Charter editor.
-- **Bars too many or too few.** In **Sync → More options**, when the tab has a bar (or a beat)
-  the recording does not, or lacks one: insert an empty bar, remove a bar, or insert/remove a
-  single beat. Everything after moves by that much and the bars around keep their tempo, instead
-  of one stretched bar. It can be done on every track at once. It rebuilds the project straight
-  away; undo it with the previous version.
-- **Drag the bar lines.** In **Drag** mode, a bar line can be dragged to where the bar starts in
-  the recording: the bars between the neighbouring corrections change tempo, and the new BPMs
-  show beside the line as you drag. With **Shift**, everything after moves with it. It stays
-  pending like the other corrections (Ctrl+Z undoes it).
+- **Smooth a Songsterr video's bar times.** The bar times Songsterr keeps for a video are
+  marked by hand, and now and then one is out of place: the bar before comes out short, the next
+  one long, and that bar's notes arrive early or late. With **Smooth the video's bar times** on
+  (step 3 of a new project, or **Export → Build options**), a mark out of place between two
+  neighbours that agree with the tab's tempo moves to where the tab puts it. A real change of
+  tempo stays as it is, and the warnings say which bars moved. It is off by default.
 
 ### Fixes
 
-- **Dead notes (X) no longer show up as frets:** in a chord with a muted string, the neck under
-  the score lit that string at the fret the file stores for it, as if it were to be played. It
-  now shows a grey X, as the score and the 3D highway do. And the chord's name no longer counts
-  the muted string: an octave like 6 X 8 is no longer named "A#5" because of a note nobody plays
-  (on the score and in game).
+- **A muted string's X stays inside its chord.** A tab stores a fret for every muted note,
+  often unrelated to the chord (in a 10 X 12 octave the X came on fret 5). The game draws the X
+  at that fret, outside the chord. A muted string in a chord now sits on the chord's lowest fret,
+  where the index finger mutes it. Rebuild the song to see it in game.
 
 ---
 
 ### Novidades
 
-- **Abrandar sem mudar o tom.** Na Partitura, **Áudio ▾ → Ouvir melhor → Ao abrandar, manter
-  o tom** (ligado por omissão): com a velocidade abaixo de 100 %, a música fica mais lenta sem
-  ficar mais grave, e o cursor e as notas continuam onde a música está.
-- **Filtro na reprodução**: no mesmo sítio, ouvir só os graves, só os médios ou só os agudos
-  da música, com a frequência ajustável — ajuda a ouvir o tempo ou o ataque de cada nota ao
-  sincronizar. A ideia veio do editor Charter.
-- **Compassos a mais ou a menos.** Em **Sincronização → Mais opções**, quando a tab tem um
-  compasso (ou um tempo) que a gravação não tem, ou lhe falta um: inserir um compasso vazio,
-  remover um compasso, ou inserir/remover um só tempo. Tudo o que vem depois anda esse tempo e os
-  compassos à volta mantêm o andamento, em vez de um compasso esticado. Pode ser feito em todas
-  as pistas de uma vez. Reconstrói o projeto logo; desfaz-se com a versão anterior.
-- **Arrastar as linhas de compasso.** No modo **Arrastar**, a linha de um compasso arrasta-se
-  para onde ele começa na gravação: os compassos entre as correções vizinhas mudam de andamento,
-  e os BPM novos aparecem ao lado da linha enquanto arrastas. Com **Shift**, tudo o que vem
-  depois anda com ela. Fica pendente como as outras correções (Ctrl+Z desfaz).
+- **Suavizar os tempos de um vídeo do Songsterr.** Os tempos de compasso que o Songsterr guarda
+  para um vídeo são marcados à mão, e às vezes um fica fora do sítio: o compasso anterior fica
+  curto, o seguinte comprido, e as notas desse compasso chegam cedo ou tarde. Com **Suavizar os
+  tempos do vídeo** ligado (no passo 3 do novo projeto, ou em **Exportar → Opções da
+  construção**), uma marca fora do sítio entre duas vizinhas que batem com o andamento da tab
+  passa para onde a tab a põe. Uma mudança de andamento verdadeira fica como está, e os avisos
+  dizem que compassos mudaram. Vem desligado.
 
 ### Correções
 
-- **As notas abafadas (X) já não aparecem como trastes:** num acorde com uma corda abafada, o
-  braço da guitarra por baixo da partitura mostrava essa corda acesa no traste que o ficheiro
-  guarda para ela, como se fosse para tocar. Agora mostra um X cinzento, como a partitura e a
-  pista 3D. E o nome do acorde deixa de contar a corda abafada: uma oitava como 6 X 8 já não
-  aparece como "A#5" por causa de uma nota que não se toca (na partitura e no jogo).
+- **O X de uma corda abafada fica dentro do acorde.** A tab guarda um traste para cada nota
+  abafada, e muitas vezes não tem nada a ver com o acorde (numa oitava 10 X 12, o X vinha no
+  traste 5). O jogo desenha o X nesse traste, fora do acorde. Agora uma corda abafada num acorde
+  fica no traste mais baixo do acorde, onde o indicador a abafa. Reconstrói a música para o ver
+  no jogo.
