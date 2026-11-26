@@ -1922,7 +1922,7 @@ The lyric lookup's cards rounded the recording's length while the transport and 
 | Build / commit | _pending_ |
 | Severity | Low |
 | Priority | P3 |
-| Status | Fixed |
+| Status | Closed |
 
 A fret-hand mute (X) in a chord carries a fret in the file (where the hand mutes). The score drew it as X, but the neck under the score lit that string at that fret as a note to play, and the chord was named from every string including the muted one, in the viewer and in the chord template the XML and the SNG carry.
 
@@ -1939,13 +1939,14 @@ A fret-hand mute (X) in a chord carries a fret in the file (where the hand mutes
 
 **Fixes:** [FIX-0415](../FIX_LOG.md#fix-0415) (0.12.0-beta.12)
 
-**Verified:** _pending_ (by _pending_)
+**Verified:** confirmed by user: "the deadnotes are marked grey in RockForge" (issue #30, 2026-11-18, after updating to 0.12.0-beta.12); the chord names were not mentioned (by the reporter (GitHub issue #30))
 
-**Resolved:** 2026-11-17 · **Closed:** _pending_
+**Resolved:** 2026-11-17 · **Closed:** 2026-11-26
 
 **Evidence:**
 
 - https://github.com/F100Pilot/RockForge/issues/30
+- https://github.com/F100Pilot/RockForge/issues/30#issuecomment-6972142275
 
 **History:**
 
@@ -1953,3 +1954,5 @@ A fret-hand mute (X) in a chord carries a fret in the file (where the hand mutes
 - 2026-11-17 — Triaged: the screenshot shows the X on the score and the A string lit at fret 5 on the neck
 - 2026-11-17 — In Progress: neck draws X; muted strings left out of chord names
 - 2026-11-17 — Fixed: FIX-0415 (a736709)
+- 2026-11-26 — Verified: the reporter saw the dead notes grey on the neck (issue #30, 2026-11-18)
+- 2026-11-26 — Closed: issue #30 closed by the reporter

@@ -20735,18 +20735,19 @@
       "observed": "The neck shows the muted string at a fret (5, 8...), and an octave is named A#5 / D5/A after the muted string's pitch.",
       "severity": "Low",
       "priority": "P3",
-      "status": "Fixed",
+      "status": "Closed",
       "root_cause": "updateFretboard drew every lit note as its fret; chord_display and /arrangements built the chord name from every string's pitch, mute or not.",
       "fixes": [
         "FIX-0415"
       ],
-      "verified_by": "pending",
-      "verification": "pending",
+      "verified_by": "the reporter (GitHub issue #30)",
+      "verification": "confirmed by user: \"the deadnotes are marked grey in RockForge\" (issue #30, 2026-11-18, after updating to 0.12.0-beta.12); the chord names were not mentioned",
       "evidence": [
-        "https://github.com/F100Pilot/RockForge/issues/30"
+        "https://github.com/F100Pilot/RockForge/issues/30",
+        "https://github.com/F100Pilot/RockForge/issues/30#issuecomment-6972142275"
       ],
       "resolved": "2026-11-17",
-      "closed": "pending",
+      "closed": "2026-11-26",
       "history": [
         {
           "date": "2026-11-17",
@@ -20767,6 +20768,16 @@
           "date": "2026-11-17",
           "status": "Fixed",
           "note": "FIX-0415 (a736709)"
+        },
+        {
+          "date": "2026-11-26",
+          "status": "Verified",
+          "note": "the reporter saw the dead notes grey on the neck (issue #30, 2026-11-18)"
+        },
+        {
+          "date": "2026-11-26",
+          "status": "Closed",
+          "note": "issue #30 closed by the reporter"
         }
       ]
     },
@@ -20787,18 +20798,19 @@
       "observed": "The X drawn at the stored fret (5) beside a chord at frets 10/12.",
       "severity": "Low",
       "priority": "P3",
-      "status": "Fixed",
+      "status": "Closed",
       "root_cause": "Both GP parsers kept a dead note's stored fret, and the XML/SNG carry the fret the game draws the X at.",
       "fixes": [
         "FIX-0416"
       ],
-      "verified_by": "pending",
-      "verification": "pending",
+      "verified_by": "the reporter (GitHub issue #30)",
+      "verification": "confirmed by user: \"Plays nicely so far after rebuilding\" (issue #30, 2026-11-25), the fix shipped in 0.12.0-beta.13; the version they ran was not stated",
       "evidence": [
-        "https://github.com/F100Pilot/RockForge/issues/30#issuecomment-7070228246"
+        "https://github.com/F100Pilot/RockForge/issues/30#issuecomment-7070228246",
+        "https://github.com/F100Pilot/RockForge/issues/30#issuecomment-7154958310"
       ],
       "resolved": "2026-11-21",
-      "closed": "pending",
+      "closed": "2026-11-26",
       "history": [
         {
           "date": "2026-11-21",
@@ -20819,6 +20831,16 @@
           "date": "2026-11-21",
           "status": "Fixed",
           "note": "FIX-0416 (26f8498)"
+        },
+        {
+          "date": "2026-11-26",
+          "status": "Verified",
+          "note": "the reporter: plays nicely after rebuilding (issue #30, 2026-11-25)"
+        },
+        {
+          "date": "2026-11-26",
+          "status": "Closed",
+          "note": "issue #30 closed by the reporter"
         }
       ]
     }

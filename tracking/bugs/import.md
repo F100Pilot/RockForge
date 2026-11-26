@@ -2911,7 +2911,7 @@ A Guitar Pro / Songsterr slide INTO a note (/12) is turned into slides because R
 | Build / commit | _pending_ |
 | Severity | Low |
 | Priority | P3 |
-| Status | Fixed |
+| Status | Closed |
 
 A tab stores a fret for every fret-hand mute (X), and it is often unrelated to the chord: in the reporter's octaves 10 X 12 the muted A string carried fret 5. Rocksmith draws the X at the fret the note carries, so it appeared outside the chord's frame, which reads as a random fret. The beta 12 fix (BUG-0416) only changed RockForge's own neck and the chord name.
 
@@ -2928,13 +2928,14 @@ A tab stores a fret for every fret-hand mute (X), and it is often unrelated to t
 
 **Fixes:** [FIX-0416](../FIX_LOG.md#fix-0416) (0.12.0-beta.13)
 
-**Verified:** _pending_ (by _pending_)
+**Verified:** confirmed by user: "Plays nicely so far after rebuilding" (issue #30, 2026-11-25), the fix shipped in 0.12.0-beta.13; the version they ran was not stated (by the reporter (GitHub issue #30))
 
-**Resolved:** 2026-11-21 · **Closed:** _pending_
+**Resolved:** 2026-11-21 · **Closed:** 2026-11-26
 
 **Evidence:**
 
 - https://github.com/F100Pilot/RockForge/issues/30#issuecomment-7070228246
+- https://github.com/F100Pilot/RockForge/issues/30#issuecomment-7154958310
 
 **History:**
 
@@ -2942,3 +2943,5 @@ A tab stores a fret for every fret-hand mute (X), and it is often unrelated to t
 - 2026-11-21 — Triaged: the screenshots show the X at fret 5 beside a 10/12 octave in game and on the neck
 - 2026-11-21 — In Progress: a muted string in a chord takes the chord's lowest fretted fret
 - 2026-11-21 — Fixed: FIX-0416 (26f8498)
+- 2026-11-26 — Verified: the reporter: plays nicely after rebuilding (issue #30, 2026-11-25)
+- 2026-11-26 — Closed: issue #30 closed by the reporter

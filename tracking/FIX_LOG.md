@@ -420,8 +420,8 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | [FIX-0412](#fix-0412) | BUG-0413 | 0.12.0-beta.11 | passed | pending |
 | [FIX-0413](#fix-0413) | BUG-0414 | 0.12.0-beta.11 | pending | pending |
 | [FIX-0414](#fix-0414) | BUG-0415 | 0.12.0-beta.11 | passed | automated |
-| [FIX-0415](#fix-0415) | BUG-0416 | 0.12.0-beta.12 | passed | automated |
-| [FIX-0416](#fix-0416) | BUG-0417 | 0.12.0-beta.13 | passed | automated |
+| [FIX-0415](#fix-0415) | BUG-0416 | 0.12.0-beta.12 | passed | confirmed by user |
+| [FIX-0416](#fix-0416) | BUG-0417 | 0.12.0-beta.13 | passed | confirmed by user |
 
 ## FIX-0001
 
@@ -9135,7 +9135,7 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Tests | tests/test_chords.py::test_a_dead_string_is_left_out_of_the_chords_name; tests/test_api.py::test_a_dead_string_in_a_chord_reaches_the_score_as_a_mute |
 | Manual checks | an invented GP5 of 6 X 8 octaves built for real: the neck shows 6, a grey X and 8 (PT 1440 / EN 760 px, no page errors), no chord name |
 | Test result | passed |
-| Validation | automated |
+| Validation | confirmed by user |
 | Regression risk | Low: only chords with a muted string change name; a template shared by a muted and an unmuted chord takes the name of the first. |
 
 ## FIX-0416
@@ -9156,5 +9156,5 @@ Every change made to fix a bug. One fix may close several bugs and one bug may n
 | Tests | tests/test_chords.py::test_a_muted_string_in_a_chord_sits_on_the_chords_lowest_fret; tests/test_songsterr_gp.py::test_a_muted_string_in_a_songsterr_chord_is_charted_inside_the_chord; tests/test_gpif_import.py::test_gp7_a_muted_string_in_a_chord_sits_on_the_chords_lowest_fret |
 | Manual checks | — |
 | Test result | passed |
-| Validation | automated |
+| Validation | confirmed by user |
 | Regression risk | Low: only the fret of a muted string inside a chord changes; it was never a pitch the game scores. Not seen in game. |

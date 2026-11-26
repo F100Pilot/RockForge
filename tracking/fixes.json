@@ -10477,7 +10477,7 @@
       ],
       "test_result": "passed",
       "regression_risk": "Low: only chords with a muted string change name; a template shared by a muted and an unmuted chord takes the name of the first.",
-      "validation": "automated"
+      "validation": "confirmed by user"
     },
     {
       "id": "FIX-0416",
@@ -10503,7 +10503,7 @@
       "manual_checks": [],
       "test_result": "passed",
       "regression_risk": "Low: only the fret of a muted string inside a chord changes; it was never a pitch the game scores. Not seen in game.",
-      "validation": "automated"
+      "validation": "confirmed by user"
     }
   ]
 }

@@ -59,7 +59,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 **Known bugs it carried:** 
 
-- [BUG-0417](bugs/import.md#bug-0417) A muted string in a chord kept the tab's stored fret, so the game drew its X outside the chord (Low, now Fixed)
+- [BUG-0417](bugs/import.md#bug-0417) A muted string in a chord kept the tab's stored fret, so the game drew its X outside the chord (Low, now Closed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
@@ -86,7 +86,7 @@ Every version, newest first. What a version fixed and the bugs it still carried 
 
 **Known bugs it carried:** 
 
-- [BUG-0416](bugs/viewer.md#bug-0416) A dead note in a chord lit the neck at its stored fret and gave its pitch to the chord's name (Low, now Fixed)
+- [BUG-0416](bugs/viewer.md#bug-0416) A dead note in a chord lit the neck at its stored fret and gave its pitch to the chord's name (Low, now Closed)
 
 **Update / rollback:** Install the new version over it (installer) or replace the folder (portable zip); start.bat pulls by itself. To go back, install an earlier release from the Releases page.
 
