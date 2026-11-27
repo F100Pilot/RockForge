@@ -1669,28 +1669,75 @@ every arrangement's; both send the smaller dict on the next rebuild, which
 genuinely removes them. `updateNoteEditsInfo` shows the per-arrangement count
 and disables both buttons when there is nothing to clear.
 
-### Simples / Avançado and the sync guide (`setSyncLevel`, `#syncGuide`)
+### Simples / Avançado, the next step and the welcome card (`setUiLevel`, `renderNextStep`)
 
-"Too many options and whistles on the tempo correction page. Even though there's a
-user guide and a video it still not easy to operate" (r/rocksmith, 2026-11-08). The
-Sincronização inspector opens with `#syncLevelSeg`: **Simples** (the default,
-`localStorage` `rf-sync-level`) or **Avançado**. Simples puts `body.sync-simple`, and
-the CSS hides everything marked `data-sync-adv` — the main chart card, the start's
-slider and "Detetar 1ª nota", the tempo slider, the auto-sync and attacks cards, and
-the Marcar/Excerto/Mover seguintes/Alinhar compasso modes (`modeOffered`: their
-digits do nothing, a picked one is dropped by `setSyncLevel`). Nothing is removed and
-no pending edit changes. On top sits `#syncGuide` ("Como sincronizar", Simples only):
-the four steps in order — Início (`#syncStartCard`), Andamento (`#syncTempoCard`),
-Corrigir onde foge ("Escolher Corrigir daqui" = `setSyncMode('newbeat')`, or "Marcar
-a ouvir"), Aplicar e confirmar (`#syncStateCard`, ticked by `renderSyncGuide` when the
-chart on screen is marked) — each "Mostrar" scrolling to and flashing its card, and a
-hint when the file already brings its timing (`sync_source` gp/songsterr). **A new
-sync tool is Avançado unless the usual order needs it**: mark it `data-sync-adv`.
-Browser-only; verified with Playwright on an invented two-track project (PT 1440 / EN
-760 px): Simples shows the guide and 6 modes, digit 2 (Marcar) ignored and 5 (Corrigir
-daqui) taken, "Mostrar" flashes the card, Avançado shows all 10 modes and the cards,
-an advanced mode dropped back in Simples, the choice kept after a reload, step 4
-ticked after marking, no page errors.
+"Too many options and whistles on the tempo correction page" (r/rocksmith, 2026-11-08)
+first gave the Sincronização inspector a Simples level and the guide below; then "a
+aplicação é confusa porque tem muitas opções, e não sabem o que fazer" (2026-11-27) made
+it the whole app's, from three sketches the user approved ("Avança com as três"):
+
+- **One level for the app** (`setUiLevel`, `uiSimple`): **Simples** or **Avançado** in
+  the project's top bar (`.pv-top .ui-level`, hidden under 1100 px) and in Definições →
+  Geral → "Nível de detalhe" — every `[data-ui-level]` button. Simples puts
+  `body.ui-simple` (and `sync-simple`, which the sync guide's rules read), and the CSS
+  hides everything marked **`data-adv`** (any page) or `data-sync-adv` (sync tools and
+  the advanced modes — `modeOffered`: their digits do nothing, a picked one is dropped);
+  `data-simple-only` is the other way (the lines pointing at "Avançado",
+  `[data-go-advanced]`). Hidden in Simples: the A–B loop, metronome, filter and
+  keep-pitch, snapping, Pista 3D, Tocar, Legenda, Barras de áudio, Todas as notas, Duas
+  pistas, the Secções tab, the Tone/Section/FHP modes (plus the four sync ones); Tons:
+  per-track sharing, extras, tone changes, timeline, suggestions, tone plan; Letra:
+  detect, align, sort, LRC, back to the score; Exportar: bundle (the dl-card is
+  `data-adv` in `selectJob`), `.rfproj`, the Guitar Pro exports, Opções da construção
+  ("Instalar no jogo" moved first); Definições: Tons e IA, Python ML, Stems, Volume, GPU
+  (a remembered hidden page opens Geral; an explicit `openSettings('ml')` still shows
+  it). Switching to Simples BY THE USER turns off what it hides
+  (`switchOffWhatSimpleHides`: those switches, the filter, the A–B loop — a hidden loop
+  would trap playback — the Secções tab). Nothing is removed and no pending edit
+  changes. **Decided once** (`uiLevelAtStart`, `rf-ui-level`): `rf-first-seen` from an
+  earlier day = someone who used RockForge before → Avançado and no welcome; otherwise
+  Simples and the welcome card (`rf-welcome` show/hidden); blocked storage = Simples.
+  The old `rf-sync-level` is no longer read. **A new tool is Avançado unless the usual
+  way through a song needs it**: mark it `data-adv` (or `data-sync-adv` for a sync mode).
+- **"Próximo passo"** replaces the "Falta: …" chip (`#pvStatusChip`, now in
+  `#nextStepWrap` with `#nextStepMore` → `#nextStepMenu`, `wireDropdown`): four steps,
+  `PROJECT_STEPS`/`projectSteps(j)` from `JobOut` alone — sync (`sync_source ===
+  'confirmed'`, i.e. every chart marked; a non-GP job has none), tones (`has_tones`,
+  optional), cover (`cover_art`, optional), install (`in_game === 'this'`, skippable as
+  "Já tratei disto" for a PSARC copied by hand). The first not done and not skipped is
+  the pill ("Próximo passo i de 4 · opcional" + dots); none = "Pronto a jogar"; the
+  checklist's first red row (no Wwise / no PSARC / known PSARC faults) comes before any
+  step, red, its click that row's action. Click = `goToStep` (sync: Partitura + the
+  guide or the state card, flashed by `flashCard`; tones; cover; install: Exportar +
+  the install row). The menu: Ir / Saltar / Retomar per step. Skips are stored
+  server-side, `PATCH /jobs/{id}/skipped-steps` (`SkippedStepsIn`: tones/cover/install
+  only, the sync never) → `params["skipped_steps"]` (`api.SKIPPABLE_STEPS`, in their
+  order; portable in `.rfproj`; type-checked on import; a fork inherits it) →
+  `JobOut.skipped_steps`. While building/failed the chip is `setStatusChip` as before.
+  The home cards' chip is the same step (`jobCardStatus`: "Próximo: sincronizar",
+  neutral for an optional one); the "Sincronizada"/"Tons standard" chips are gone.
+- **Home page**: "Novo projeto", **Mais ▾** (`#homeMoreMenu`: Importar projeto, Lote,
+  Projeto de exemplo, café, estrela — same ids; `wireDropdown` now also takes
+  `a.dd-item`), idioma, Definições. `#homeWelcome` for someone new: "Abrir o projeto de
+  exemplo" (opens the newest example project — artist "RockForge" — else makes one) or
+  "Novo projeto"; that or "Não mostrar outra vez" hides it for good.
+
+The sync guide itself, unchanged: `#syncGuide` ("Como sincronizar", Simples only): the
+four steps in order — Início (`#syncStartCard`), Andamento (`#syncTempoCard`), Corrigir
+onde foge ("Escolher Corrigir daqui" = `setSyncMode('newbeat')`, or "Marcar a ouvir"),
+Aplicar e confirmar (`#syncStateCard`, ticked by `renderSyncGuide` when the chart on
+screen is marked) — each "Mostrar" flashing its card, and a hint when the file already
+brings its timing. Guarded by
+`test_the_steps_skipped_in_the_top_bar_are_remembered_and_inherited`; the rest is
+browser-only, verified with Playwright on the example project (PT 1440 / EN 760 px):
+a fresh browser in Simples with the welcome card and the Mais menu, "Abrir o projeto de
+exemplo" building and opening it, the pill red "PSARC sem som" (no Wwise here) and,
+with the PSARC faked as playable, step 1 → sync confirmed → 2 (opcional) → skip tones
+→ 3 → skip cover → 4 → "Já tratei disto" → "Pronto a jogar" → "Retomar" tones → 2;
+the hidden controls invisible and visible in Avançado, the audio bars switched off by
+going back to Simples, Exportar with install first and the advanced rows hidden,
+Definições showing Geral and Software only; an earlier user (`rf-first-seen` of
+another day) in Avançado with no welcome; no horizontal scroll, no page errors.
 
 ### The example project and its tutorial (`example_song.py`, `/projects/example`)
 
@@ -3948,8 +3995,8 @@ jump-button to the right editor (`COMPLETE_ACTIONS`). Rows + alerts:
   that key existed once at startup, so they need no rebuild.
   `JobOut.sync_source` says why a chart counts as in sync — `confirmed` (the
   user's word wins), `songsterr`, `gp`, `adjusted` (corrected here, not yet
-  confirmed) or None (`_sync_source`). It drives a "Sincronizada" chip on the
-  project card (`isSynced`), an **"Estado da sincronização"** card at the top
+  confirmed) or None (`_sync_source`). It drove a "Sincronizada" chip on the
+  project card (gone since the "Próximo passo" cards, 2026-11-27), and drives an **"Estado da sincronização"** card at the top
   of the Sincronização tab with "Marcar como sincronizada"/"Desmarcar"
   (`renderSyncState`, the same `PATCH /sync-confirmed` — it was only reachable
   from the Exportar page before), and the checklist row ("Sincronizada no

@@ -401,9 +401,11 @@
   .dd-menu.dd-up { top:auto; bottom:calc(100% + .4rem); }
   .dd-cap { padding:.55rem .75rem .2rem; font-size:.68rem; font-weight:700; letter-spacing:.07em;
     text-transform:uppercase; color:var(--muted); }
-  button.dd-item { display:flex; align-items:center; gap:.8rem; width:100%; padding:.42rem .75rem;
-    background:transparent; color:var(--text); border:0; border-radius:8px; text-align:left; }
-  button.dd-item:hover:not(:disabled), button.dd-item:focus-visible { background:#262833; outline:none; }
+  button.dd-item, a.dd-item { display:flex; align-items:center; gap:.8rem; width:100%; padding:.42rem .75rem;
+    background:transparent; color:var(--text); border:0; border-radius:8px; text-align:left; text-decoration:none; box-sizing:border-box; }
+  button.dd-item:hover:not(:disabled), button.dd-item:focus-visible, a.dd-item:hover, a.dd-item:focus-visible { background:#262833; outline:none; }
+  a.dd-item .dd-ico { width:1.6rem; height:1.6rem; margin:0 .2rem; }
+  a.dd-coffee .dd-ico, a.dd-star .dd-ico { color:#ffd27a; }
   button.dd-item:disabled { opacity:.45; cursor:default; }
   button.dd-item.active-mode { background:#2e2520; color:var(--accent); }
   button.dd-item .dd-ico { width:1.6rem; height:1.6rem; margin:0 .2rem; }
@@ -734,6 +736,19 @@ kbd { display:inline-block; min-width:1.5em; padding:.08em .45em; border:1px sol
 .proj-del:hover { color:var(--err); filter:none; }
 .proj-del .ic { margin:0; }
 .home-empty { grid-column:1 / -1; color:var(--muted); font-size:.9rem; }
+/* The welcome card for someone new: two ways in, the example first. */
+.home-welcome { display:flex; flex-direction:column; gap:1.1rem; padding:1.8rem 2rem; border:1px solid #262831; border-radius:16px; background:#16171d; }
+.home-welcome h2 { margin:0; font-size:1.7rem; font-weight:700; }
+.home-welcome-lead { margin:0; color:#aab2c0; font-size:1.05rem; line-height:1.5; max-width:48rem; }
+.home-welcome-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:1.1rem; }
+@media (max-width: 800px) { .home-welcome-grid { grid-template-columns:minmax(0, 1fr); } .home-welcome { padding:1.3rem; } }
+.home-welcome-opt { display:flex; flex-direction:column; gap:.7rem; padding:1.4rem; border:1px solid #33363f; border-radius:14px; background:#1d1f27; }
+.home-welcome-opt.rec { border:2px solid var(--accent); }
+.home-welcome-opt h3 { margin:0; font-size:1.25rem; }
+.home-welcome-opt p { margin:0; color:#aab2c0; line-height:1.5; }
+.home-welcome-opt .pv-btn { align-self:flex-start; margin-top:auto; }
+.home-welcome-tag { font-size:.75rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); }
+.home-welcome-opt.rec .home-welcome-tag { color:#ff9a6b; }
 
 /* ══════════ Projeto em ecrã inteiro ══════════
    Fixed over the project list (z 40, under the modals at 50): a top bar, a
@@ -761,8 +776,6 @@ a.pv-btn { text-decoration:none; box-sizing:border-box; }
 a.pv-coffee { color:#ffd27a; border-color:#5a4a2a; }
 a.pv-star { color:#cfd8ea; }
 a.pv-star .ic { color:#ffd27a; }
-@media (max-width: 900px) { #coffeeBtn, #starBtn { width:2.75rem; padding:0; justify-content:center; } #coffeeBtn .pv-coffee-lbl, #starBtn .pv-star-lbl { display:none; } }
-@media (max-width: 1100px) { #importProjectBtn, #exampleProjectBtn { width:2.75rem; padding:0; justify-content:center; } #importProjectBtn .pv-import-lbl, #exampleProjectBtn .pv-import-lbl { display:none; } }
 .project-export-row .check { display:flex; margin-top:.4rem; }
 button.pv-btn .ic, a.pv-btn .ic { width:1.3rem; height:1.3rem; margin:0; }
 select.lang-select { height:2.75rem; border-radius:10px; border:1px solid #33363f; background:#1f2129;
@@ -774,7 +787,48 @@ button.pv-primary:hover { background:var(--accent); filter:brightness(1.08); }
 .pv-chip { display:inline-flex; align-items:center; gap:.4rem; height:2rem; padding:0 .85rem; border-radius:999px; border:0;
   font-size:.8rem; font-weight:700; white-space:nowrap; max-width:20rem; overflow:hidden; text-overflow:ellipsis; flex-shrink:1; min-width:2.6rem; }
 @media (max-width: 1150px) { #shortcutsBtn { display:none; } }
-@media (max-width: 860px) { #pvStatusChip { display:none; } }
+@media (max-width: 860px) { #nextStepWrap { display:none; } }
+@media (max-width: 1100px) { .pv-top .ui-level { display:none; } }
+.pv-top .ui-level { flex:none; }
+.pv-top .ui-level button { flex:none; padding:0 .8rem; }
+/* "Próximo passo": the pill (go to the step) and its arrow (the whole path). */
+.next-step { display:flex; align-items:center; gap:.25rem; min-width:0; flex-shrink:1; }
+.pv-chip.step { height:2.75rem; border-radius:12px; padding:0 .9rem; gap:.7rem; max-width:26rem; cursor:pointer; border:1px solid transparent; }
+.pv-chip.step.now { background:#2a1d15; border-color:#5a3a24; color:var(--text); }
+.pv-chip.step.opt { background:#1f2129; border-color:#3a3d48; color:var(--text); }
+.pv-chip.step.ok { border-color:#24502f; }
+.pv-chip.step.err { border-color:#5a2626; }
+.step-txt { display:flex; flex-direction:column; align-items:flex-start; min-width:0; line-height:1.2; }
+.step-k { font-size:.66rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#ff9a6b; }
+.pv-chip.step.opt .step-k { color:var(--muted); }
+.step-name { font-size:.92rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.step-dots { display:flex; gap:.3rem; flex:none; }
+.step-dots span { width:.5rem; height:.5rem; border-radius:999px; background:#4a4d58; }
+.step-dots .done { background:#5fd68a; }
+.step-dots .skip { background:#9a9ca6; opacity:.55; }
+.step-dots .cur { background:var(--accent); }
+button.next-step-more { flex:none; width:2.2rem; height:2.75rem; padding:0; display:flex; align-items:center; justify-content:center;
+  border-radius:10px; border:1px solid #33363f; background:#1f2129; color:var(--muted); }
+button.next-step-more:hover { color:var(--text); filter:none; }
+button.next-step-more .ic { margin:0; }
+.next-step-menu { width:min(27rem, 92vw); padding:.35rem .35rem .5rem; }
+.ns-row { display:flex; align-items:center; gap:.7rem; padding:.5rem .6rem; border-radius:10px; }
+.ns-row.cur { background:#2a1d15; }
+.ns-num { flex:none; width:1.7rem; height:1.7rem; border-radius:999px; display:flex; align-items:center; justify-content:center;
+  background:#262833; font-weight:700; font-size:.85rem; color:var(--muted); }
+.ns-row.cur .ns-num { background:var(--accent); color:#1a1208; }
+.ns-row.done .ns-num { background:#16331f; color:#5fd68a; }
+.ns-num .ic { margin:0; width:1rem; height:1rem; }
+.ns-txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:.1rem; }
+.ns-txt b { font-size:.92rem; }
+.ns-txt span { font-size:.78rem; color:var(--muted); }
+.ns-row.skip .ns-txt b { color:var(--muted); }
+.ns-acts { display:flex; gap:.35rem; flex:none; }
+.ns-acts button { padding:.3rem .65rem; font-size:.8rem; }
+.ns-block { display:flex; gap:.6rem; align-items:flex-start; margin:.2rem .3rem .5rem; padding:.6rem .7rem; border-radius:10px;
+  background:#2b1616; border:1px solid #5a2626; color:#f3c3c3; font-size:.82rem; line-height:1.4; }
+.ns-block .ic { color:#f08a8a; margin:.1rem 0 0; }
+.ns-block span { display:flex; flex-direction:column; gap:.2rem; }
 .pv-top > .pv-btn { flex-shrink:0; }
 .pv-top > .pv-pending { flex-shrink:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 @media (max-width: 1100px) { .pv-dl-label { display:none; } }
@@ -813,9 +867,9 @@ button.pv-primary:hover { background:var(--accent); filter:brightness(1.08); }
 .pv-seg button:hover { color:var(--text); filter:none; }
 .pv-seg button.active { background:#2a2c35; color:var(--text); }
 /* "Simples": the sync tools only the usual order needs; the rest under "Avançado". */
-body.sync-simple [data-sync-adv] { display:none !important; }
+body.sync-simple [data-sync-adv], body.ui-simple [data-adv] { display:none !important; }
+body:not(.ui-simple) [data-simple-only] { display:none !important; }
 body:not(.sync-simple) #syncGuide { display:none; }
-.sync-level { margin-bottom:.1rem; }
 .sync-guide-steps { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.7rem; }
 .sync-guide-steps li { display:flex; gap:.6rem; align-items:flex-start; }
 .sync-guide-steps li > div { display:flex; flex-direction:column; gap:.2rem; min-width:0; }
@@ -1104,13 +1158,19 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
       <span id="appVersion" style="font-size:.75rem;color:var(--muted)"></span>
     </div>
     <span class="pv-spacer"></span>
-    <a id="coffeeBtn" class="pv-btn pv-coffee" href="https://paypal.me/F100Pilot" target="_blank" rel="noopener" title="O RockForge é gratuito. Se te é útil, podes pagar-me um café (PayPal)." aria-label="Paga-me um café"><svg class="ic" aria-hidden="true"><use href="#i-coffee"/></svg><span class="pv-coffee-lbl">Paga-me um café</span></a>
-    <a id="starBtn" class="pv-btn pv-star" data-star-link href="https://github.com/F100Pilot/RockForge" target="_blank" rel="noopener" title="O RockForge é gratuito e de código aberto. Uma estrela no GitHub ajuda outras pessoas a encontrá-lo." aria-label="Dar uma estrela no GitHub"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg><span class="pv-star-lbl">Dar uma estrela</span></a>
-    <button type="button" id="openBatchModal" class="pv-btn" title="Vários ficheiros Guitar Pro + gravações de uma vez — um álbum inteiro"><svg class="ic" aria-hidden="true"><use href="#i-package"/></svg>Lote (álbum)</button>
-    <button type="button" id="importProjectBtn" class="pv-btn" title="Abre um projeto exportado do RockForge (.rfproj) — de outro computador ou de uma cópia" aria-label="Importar projeto"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg><span class="pv-import-lbl">Importar projeto</span></button>
-    <input type="file" id="importProjectFile" accept=".rfproj,.zip" hidden>
-    <button type="button" id="exampleProjectBtn" class="pv-btn" title="Cria um projeto com uma música inventada para aprender a sincronizar — o tutorial do Guia segue-o passo a passo" aria-label="Projeto de exemplo"><svg class="ic" aria-hidden="true"><use href="#i-music"/></svg><span class="pv-import-lbl">Projeto de exemplo</span></button>
     <button type="button" class="pv-btn pv-primary" data-new="gp"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Novo projeto</button>
+    <div class="dd">
+      <button type="button" id="homeMoreBtn" class="pv-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="homeMoreMenu">Mais<svg class="ic dd-chev" aria-hidden="true"><use href="#i-chev-down"/></svg></button>
+      <div class="dd-menu right" id="homeMoreMenu" role="menu" aria-label="Mais" hidden>
+        <button type="button" id="importProjectBtn" class="dd-item" role="menuitem" title="Abre um projeto exportado do RockForge (.rfproj) — de outro computador ou de uma cópia"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-upload"/></svg><span class="dd-txt"><span class="dd-name">Importar projeto</span><span class="dd-desc">Um .rfproj de outro computador ou de uma cópia</span></span></button>
+        <button type="button" id="openBatchModal" class="dd-item" role="menuitem" title="Vários ficheiros Guitar Pro + gravações de uma vez — um álbum inteiro"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-package"/></svg><span class="dd-txt"><span class="dd-name">Lote (álbum)</span><span class="dd-desc">Vários ficheiros Guitar Pro de uma vez</span></span></button>
+        <button type="button" id="exampleProjectBtn" class="dd-item" role="menuitem" title="Cria um projeto com uma música inventada para aprender a sincronizar — o tutorial do Guia segue-o passo a passo"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-music"/></svg><span class="dd-txt"><span class="dd-name">Projeto de exemplo</span><span class="dd-desc">Uma música inventada para aprender a sincronizar</span></span></button>
+        <div class="dd-cap">Apoiar o projeto</div>
+        <a id="coffeeBtn" class="dd-item dd-coffee" role="menuitem" href="https://paypal.me/F100Pilot" target="_blank" rel="noopener" title="O RockForge é gratuito. Se te é útil, podes pagar-me um café (PayPal)."><svg class="ic dd-ico" aria-hidden="true"><use href="#i-coffee"/></svg><span class="dd-txt"><span class="dd-name">Paga-me um café</span></span></a>
+        <a id="starBtn" class="dd-item dd-star" role="menuitem" data-star-link href="https://github.com/F100Pilot/RockForge" target="_blank" rel="noopener" title="O RockForge é gratuito e de código aberto. Uma estrela no GitHub ajuda outras pessoas a encontrá-lo."><svg class="ic dd-ico" aria-hidden="true"><use href="#i-star"/></svg><span class="dd-txt"><span class="dd-name">Dar uma estrela no GitHub</span></span></a>
+      </div>
+    </div>
+    <input type="file" id="importProjectFile" accept=".rfproj,.zip" hidden>
     <select id="langSelectTop" class="lang-select" data-lang-select="short" translate="no" title="Idioma · Language" aria-label="Idioma · Language">
       <option value="pt">PT</option>
     </select>
@@ -1119,6 +1179,25 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
 
   <main class="home-main">
     <div id="homeNotices" class="home-notices" hidden></div>
+    <section id="homeWelcome" class="home-welcome" aria-labelledby="homeWelcomeTitle" hidden>
+      <h2 id="homeWelcomeTitle">Bem-vindo ao RockForge</h2>
+      <p class="home-welcome-lead">Transforma uma tab de guitarra numa música para o Rocksmith 2014. Por onde queres começar?</p>
+      <div class="home-welcome-grid">
+        <div class="home-welcome-opt rec">
+          <span class="home-welcome-tag">Recomendado para começar</span>
+          <h3>Experimentar com o projeto de exemplo</h3>
+          <p>Uma música curta inventada, com um tutorial passo a passo no Guia. Aprendes a sincronizar sem arriscar nada teu.</p>
+          <button type="button" id="welcomeExample" class="pv-btn pv-primary"><svg class="ic" aria-hidden="true"><use href="#i-music"/></svg>Abrir o projeto de exemplo</button>
+        </div>
+        <div class="home-welcome-opt">
+          <span class="home-welcome-tag">Já sei o que quero</span>
+          <h3>Criar o meu primeiro projeto</h3>
+          <p>A partir de um ficheiro Guitar Pro, de um link do Songsterr ou de um PDF da tab. O assistente guia-te em 4 passos.</p>
+          <button type="button" class="pv-btn" data-new="gp"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Novo projeto</button>
+        </div>
+      </div>
+      <button type="button" id="welcomeHide" class="link-btn">Não mostrar outra vez</button>
+    </section>
     <div class="home-head">
       <h2 class="joblist-title">Projetos</h2>
       <span class="pv-spacer"></span>
@@ -1147,8 +1226,16 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
   <header class="pv-top">
     <button type="button" class="pv-btn pv-icon-btn" id="detailClose" title="Voltar aos projetos" aria-label="Voltar aos projetos"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></button>
     <div id="detailHead" class="pv-head"></div>
-    <button type="button" id="pvStatusChip" class="pv-chip" hidden></button>
+    <div class="dd next-step" id="nextStepWrap">
+      <button type="button" id="pvStatusChip" class="pv-chip" hidden></button>
+      <button type="button" id="nextStepMore" class="next-step-more" aria-haspopup="true" aria-expanded="false" aria-controls="nextStepMenu" title="O caminho deste projeto" aria-label="O caminho deste projeto" hidden><svg class="ic" aria-hidden="true"><use href="#i-chev-down"/></svg></button>
+      <div class="dd-menu next-step-menu" id="nextStepMenu" hidden></div>
+    </div>
     <span class="pv-spacer"></span>
+    <div class="pv-seg ui-level" role="group" aria-label="Nível de detalhe">
+      <button type="button" data-ui-level="simple" title="Só o essencial, pela ordem em que se usa">Simples</button>
+      <button type="button" data-ui-level="advanced" title="Todas as ferramentas">Avançado</button>
+    </div>
     <button type="button" id="shortcutsBtn" class="pv-btn pv-icon-btn" title="Atalhos de teclado (?)" aria-label="Atalhos de teclado"><svg class="ic" aria-hidden="true"><use href="#i-key"/></svg></button>
     <button type="button" id="undoBtn" class="pv-btn pv-icon-btn" title="Desfazer (Ctrl+Z)" aria-label="Desfazer" disabled><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg></button>
     <button type="button" id="redoBtn" class="pv-btn pv-icon-btn" title="Refazer (Ctrl+Shift+Z)" aria-label="Refazer" disabled><svg class="ic" aria-hidden="true"><use href="#i-redo"/></svg></button>
@@ -1195,7 +1282,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 <option value="0.3">30%</option>
                 <option value="0.25">25%</option>
               </select>
-              <div class="pv-loop" role="group" aria-label="Repetir um trecho (A–B)">
+              <div class="pv-loop" role="group" aria-label="Repetir um trecho (A–B)" data-adv>
                 <button type="button" id="loopA" class="pv-loop-btn" title="Início do trecho a repetir = cursor ([)"><span translate="no">A</span></button>
                 <button type="button" id="loopB" class="pv-loop-btn" title="Fim do trecho a repetir = cursor (])"><span translate="no">B</span></button>
                 <button type="button" id="loopToggle" class="pv-loop-btn" aria-pressed="false" title="Repetir o trecho A–B (L)" aria-label="Repetir o trecho A–B"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg></button>
@@ -1208,17 +1295,17 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                   <label class="pv-field">Música <input type="range" id="musicVolume" min="0" max="1" step="0.05" value="1"></label>
                   <label class="pv-field">Notas <input type="range" id="tickVolume" min="0" max="2" step="0.05" value="1"></label>
                   <label class="check"><input type="checkbox" id="syncTick" checked> Tique por nota</label>
-                  <label class="pv-field">Metrónomo <input type="range" id="metroVolume" min="0" max="2" step="0.05" value="1"></label>
-                  <label class="check" title="Um clique em cada tempo da partitura, como está desenhada (com as correções por aplicar); o 1.º tempo de cada compasso mais agudo. Ouve-se se a grelha de compassos bate com a música, e nas Barras de áudio aparece a faixa do metrónomo, para comparar cada tempo com os ataques (da bateria, por exemplo)"><input type="checkbox" id="syncMetro"> Clique em cada tempo</label>
-                  <div class="dd-cap">Ouvir melhor <button class="info-btn" data-info="listen-help">ⓘ</button></div>
-                  <label class="check" title="Abrandada, a música mantém o tom em vez de ficar mais grave"><input type="checkbox" id="keepPitch" checked> Ao abrandar, manter o tom</label>
-                  <select id="playFilter" aria-label="Filtro de frequências" title="Deixa passar só uma parte das frequências da música (as notas, o metrónomo e os tiques não são filtrados)">
+                  <label class="pv-field" data-adv>Metrónomo <input type="range" id="metroVolume" min="0" max="2" step="0.05" value="1"></label>
+                  <label class="check" data-adv title="Um clique em cada tempo da partitura, como está desenhada (com as correções por aplicar); o 1.º tempo de cada compasso mais agudo. Ouve-se se a grelha de compassos bate com a música, e nas Barras de áudio aparece a faixa do metrónomo, para comparar cada tempo com os ataques (da bateria, por exemplo)"><input type="checkbox" id="syncMetro"> Clique em cada tempo</label>
+                  <div class="dd-cap" data-adv>Ouvir melhor <button class="info-btn" data-info="listen-help">ⓘ</button></div>
+                  <label class="check" data-adv title="Abrandada, a música mantém o tom em vez de ficar mais grave"><input type="checkbox" id="keepPitch" checked> Ao abrandar, manter o tom</label>
+                  <select id="playFilter" data-adv aria-label="Filtro de frequências" title="Deixa passar só uma parte das frequências da música (as notas, o metrónomo e os tiques não são filtrados)">
                     <option value="">Sem filtro</option>
                     <option value="lowpass">Só os graves (bombo, baixo)</option>
                     <option value="bandpass">Só os médios (guitarra, voz)</option>
                     <option value="highpass">Só os agudos (pratos, palhetada)</option>
                   </select>
-                  <label class="pv-field" id="playFilterFreqRow" hidden>Frequência <input type="range" id="playFilterFreq" min="0" max="1" step="0.005" value="0.5"> <span id="playFilterHz" class="meta" style="white-space:nowrap;min-width:4.2em;text-align:right"></span></label>
+                  <label class="pv-field" id="playFilterFreqRow" data-adv hidden>Frequência <input type="range" id="playFilterFreq" min="0" max="1" step="0.005" value="0.5"> <span id="playFilterHz" class="meta" style="white-space:nowrap;min-width:4.2em;text-align:right"></span></label>
                   <div class="dd-cap">Fonte de áudio <button class="info-btn" data-info="stems">ⓘ</button></div>
                   <select id="audioSource" aria-label="Fonte de áudio">
                     <option value="">Mistura completa</option>
@@ -1255,13 +1342,13 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 <button type="button" id="modeBarAlign" class="mode-btn dd-item" role="menuitemradio" aria-checked="false" data-sync-adv
                   data-ico="ruler" data-name="Alinhar compasso" title="Alinhar por compasso: pausa a gravação no instante certo e clica numa nota — abre um popup com o número do compasso (o da nota, já escolhido). Confirma e esse compasso alinha-se ao cursor (ou ao mesmo compasso de outra pista), arrastando as notas seguintes. Ideal para várias correções ao longo da música."><svg class="ic dd-ico" aria-hidden="true"><use href="#i-ruler"/></svg><span class="dd-txt"><span class="dd-name">Alinhar compasso</span><span class="dd-desc">Clica numa nota ou na linha do compasso: encosta-o ao cursor, ou muda o BPM</span></span></button>
                 <div class="dd-cap">Partitura</div>
-                <button type="button" id="modeTone" class="mode-btn dd-item" role="menuitemradio" aria-checked="false"
+                <button type="button" id="modeTone" class="mode-btn dd-item" role="menuitemradio" aria-checked="false" data-sync-adv
                   data-ico="wave" data-name="Mudança de tom" title="Mudança de tom: clica numa nota para trocar para um dos tons extra (amp/efeito) a partir daí. Nada a ver com sincronização — é para as mudanças de som ao longo da música."><svg class="ic dd-ico" aria-hidden="true"><use href="#i-wave"/></svg><span class="dd-txt"><span class="dd-name">Mudança de tom</span><span class="dd-desc">Troca de som a partir desta nota</span></span></button>
-                <button type="button" id="modeSection" class="mode-btn dd-item" role="menuitemradio" aria-checked="false"
+                <button type="button" id="modeSection" class="mode-btn dd-item" role="menuitemradio" aria-checked="false" data-sync-adv
                   data-ico="tag" data-name="Secção" title="Secção: clica numa nota para nomear onde começa uma secção (intro/verso/refrão…). Nada a ver com sincronização — é para navegação e o Riff Repeater."><svg class="ic dd-ico" aria-hidden="true"><use href="#i-tag"/></svg><span class="dd-txt"><span class="dd-name">Secção</span><span class="dd-desc">Marca onde começa intro, verso, refrão…</span></span></button>
                 <button type="button" id="modeEditNotes" class="mode-btn dd-item" role="menuitemradio" aria-checked="false"
                   data-ico="edit" data-name="Editar notas" title="Editar notas: clica numa nota existente para a editar (traste, técnicas, bend/slide) ou remover; arrasta-a para outro tempo ou outra corda; ↑/↓ sobem ou descem um traste; DUPLO-clique no pentagrama vazio insere uma nota nova (encaixa na grelha). Para mover um acorde ou várias notas: arrasta uma caixa no pentagrama vazio (ou Ctrl+clique) e arrasta uma das notas selecionadas — movem-se todas, e podem passar por outras notas. Um clique simples no vazio move o cursor. Muda o CONTEÚDO da partitura, não o tempo."><svg class="ic dd-ico" aria-hidden="true"><use href="#i-edit"/></svg><span class="dd-txt"><span class="dd-name">Editar notas</span><span class="dd-desc">Traste, técnicas; arrasta notas e acordes; duplo-clique insere</span></span></button>
-                <button type="button" id="modeFhp" class="mode-btn dd-item" role="menuitemradio" aria-checked="false"
+                <button type="button" id="modeFhp" class="mode-btn dd-item" role="menuitemradio" aria-checked="false" data-sync-adv
                   data-ico="target" data-name="Posição da mão (FHP)" title="Posição da mão (FHP): clica numa nota para a mão passar para ali, ou numa barra da faixa FHP por baixo da pauta para mudar o traste e a largura, ou apagá-la. Muda onde o jogo põe a mão (o destaque e a câmara)."><svg class="ic dd-ico" aria-hidden="true"><use href="#i-target"/></svg><span class="dd-txt"><span class="dd-name">Posição da mão (FHP)</span><span class="dd-desc">Onde a mão fica no jogo: traste e largura</span></span></button>
                 </div>
               </div>
@@ -1279,12 +1366,12 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 <div class="dd-cap">Edições de notas</div>
                 <button type="button" id="clearNoteEdits" class="dd-item" role="menuitem" disabled title="Descartar as edições de notas desta pista (só ao Aplicar e reconstruir)"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-eraser"/></svg><span class="dd-txt"><span class="dd-name">Limpar esta pista</span><span class="dd-desc">Descarta as edições desta pista</span></span></button>
                 <button type="button" id="clearNoteEditsAll" class="dd-item" role="menuitem" disabled title="Descartar as edições de notas de TODAS as pistas (só ao Aplicar e reconstruir)"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-eraser"/></svg><span class="dd-txt"><span class="dd-name">Limpar em todas</span><span class="dd-desc">Descarta as edições de todas as pistas</span></span></button>
-                <div class="dd-cap">Posições da mão (FHP)</div>
-                <button type="button" id="resetFhp" class="dd-item" role="menuitem" disabled title="As posições da mão desta pista voltam a ser calculadas pelo RockForge (só ao Aplicar e reconstruir)"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-refresh"/></svg><span class="dd-txt"><span class="dd-name">Repor automáticas</span><span class="dd-desc">Descarta as FHPs que puseste nesta pista</span></span></button>
+                <div class="dd-cap" data-adv>Posições da mão (FHP)</div>
+                <button type="button" id="resetFhp" class="dd-item" role="menuitem" data-adv disabled title="As posições da mão desta pista voltam a ser calculadas pelo RockForge (só ao Aplicar e reconstruir)"><svg class="ic dd-ico" aria-hidden="true"><use href="#i-refresh"/></svg><span class="dd-txt"><span class="dd-name">Repor automáticas</span><span class="dd-desc">Descarta as FHPs que puseste nesta pista</span></span></button>
                 </div>
               </div>
           </div>
-            <div class="pv-group" title="A nota salta para esta grelha ao arrastar (ou para o cursor, se escolhido). Alt = arrasto livre.">
+            <div class="pv-group" data-adv title="A nota salta para esta grelha ao arrastar (ou para o cursor, se escolhido). Alt = arrasto livre.">
               <label class="check"><input type="checkbox" id="snapBeats" checked> Encaixar</label>
               <select id="snapDiv" aria-label="Encaixar em">
             <option value="bars">Compasso (downbeats)</option>
@@ -1367,16 +1454,16 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           <div class="pv-status">
             <button type="button" id="previewArr" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg>pré-visualizar</button>
             <label class="check"><input type="checkbox" id="showFretboard" checked> Braço</label>
-            <label class="check" id="fbAllNotesLabel" title="Mostra no braço o nome de todas as notas desta afinação. Clica numa para ver onde mais está o mesmo som e a mesma nota noutra oitava"><input type="checkbox" id="fbAllNotes"> Todas as notas</label>
-            <select id="fbNameMode" aria-label="Nomes das notas no braço" hidden><option value="name">Nome da nota (A)</option><option value="oct">Nome e oitava (A2)</option></select>
-            <select id="fbScope" aria-label="Notas mostradas no braço" hidden><option value="all">Todas as notas</option><option value="same">Só as iguais à escolhida</option><option value="natural">Só as naturais (sem #)</option></select>
-            <label class="check" title="As notas a descer numa pista 3D, como no Rocksmith"><input type="checkbox" id="show3d"> Pista 3D</label>
-            <label class="check" title="Liga a guitarra (Real Tone Cable ou placa de som), toca com a música e vê cada nota certa, errada ou falhada"><input type="checkbox" id="showPractice"> Tocar</label>
-            <label class="check" title="O que quer dizer cada marca da partitura"><input type="checkbox" id="showLegend"> Legenda</label>
-            <label class="check" title="Barras dos ataques (ou do volume) da gravação e do som das notas, por cima da partitura: onde não coincidem, está fora de tempo"><input type="checkbox" id="showLevels"> Barras de áudio</label>
-            <select id="levelsKind" aria-label="Tipo de barras" title="Ataques: a força de cada batida, um pico estreito por palhetada, mesmo numa guitarra distorcida. Volume: o nível do som" hidden><option value="onset">Ataques</option><option value="volume">Volume</option></select>
-            <select id="levelsSource" class="levels-source" aria-label="Áudio das barras" hidden></select>
-            <label class="check" id="showPairLabel" hidden title="Mostra outra pista por baixo da partitura, para passares notas de uma para a outra no mesmo sítio"><input type="checkbox" id="showPair"> Duas pistas</label>
+            <label class="check" id="fbAllNotesLabel" data-adv title="Mostra no braço o nome de todas as notas desta afinação. Clica numa para ver onde mais está o mesmo som e a mesma nota noutra oitava"><input type="checkbox" id="fbAllNotes"> Todas as notas</label>
+            <select id="fbNameMode" data-adv aria-label="Nomes das notas no braço" hidden><option value="name">Nome da nota (A)</option><option value="oct">Nome e oitava (A2)</option></select>
+            <select id="fbScope" data-adv aria-label="Notas mostradas no braço" hidden><option value="all">Todas as notas</option><option value="same">Só as iguais à escolhida</option><option value="natural">Só as naturais (sem #)</option></select>
+            <label class="check" data-adv title="As notas a descer numa pista 3D, como no Rocksmith"><input type="checkbox" id="show3d"> Pista 3D</label>
+            <label class="check" data-adv title="Liga a guitarra (Real Tone Cable ou placa de som), toca com a música e vê cada nota certa, errada ou falhada"><input type="checkbox" id="showPractice"> Tocar</label>
+            <label class="check" data-adv title="O que quer dizer cada marca da partitura"><input type="checkbox" id="showLegend"> Legenda</label>
+            <label class="check" data-adv title="Barras dos ataques (ou do volume) da gravação e do som das notas, por cima da partitura: onde não coincidem, está fora de tempo"><input type="checkbox" id="showLevels"> Barras de áudio</label>
+            <select id="levelsKind" data-adv aria-label="Tipo de barras" title="Ataques: a força de cada batida, um pico estreito por palhetada, mesmo numa guitarra distorcida. Volume: o nível do som" hidden><option value="onset">Ataques</option><option value="volume">Volume</option></select>
+            <select id="levelsSource" class="levels-source" data-adv aria-label="Áudio das barras" hidden></select>
+            <label class="check" id="showPairLabel" data-adv hidden title="Mostra outra pista por baixo da partitura, para passares notas de uma para a outra no mesmo sítio"><input type="checkbox" id="showPair"> Duas pistas</label>
             <div class="pv-group pv-zoom">
               <button type="button" id="zoomOut" class="secondary" aria-label="Menos zoom">−</button>
               <span id="zoomLevel" class="meta"></span>
@@ -1384,6 +1471,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
               <button type="button" id="zoomReset" class="secondary">Repor</button>
             </div>
             <button class="info-btn" data-info="tab-viewer">ⓘ</button>
+            <span class="meta" data-simple-only>Pista 3D, tocar com a guitarra, barras de áudio e mais estão no modo <button type="button" class="link-btn" data-go-advanced>Avançado</button></span>
             <span class="pv-spacer"></span>
             <span id="selectionInfo"></span>
             <button type="button" id="deleteSelection" class="secondary" hidden title="Apaga as notas selecionadas (Delete); Ctrl+Z desfaz"><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg>Apagar</button>
@@ -1405,17 +1493,13 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
         <aside class="pv-inspector" aria-label="Sincronização, secções e letra">
           <div class="pv-seg" role="tablist">
             <button type="button" role="tab" class="active" data-insp="sync">Sincronização</button>
-            <button type="button" role="tab" data-insp="sections">Secções</button>
+            <button type="button" role="tab" data-insp="sections" data-adv>Secções</button>
             <button type="button" role="tab" data-insp="lyrics">Letra</button>
           </div>
 
           <div id="inspSync" class="pv-insp-body">
             <!-- GP sync controls — hidden for audio-ML jobs (notes already aligned) -->
             <div id="gpSyncControls">
-              <div class="pv-seg sync-level" id="syncLevelSeg" role="group" aria-label="Ferramentas de sincronização">
-                <button type="button" data-sync-level="simple" title="Só o essencial, pela ordem em que se usa">Simples</button>
-                <button type="button" data-sync-level="advanced" title="Todas as ferramentas de sincronização">Avançado</button>
-              </div>
               <div class="pv-card sync-guide" id="syncGuide">
                 <div class="pv-card-head">Como sincronizar
                   <button class="info-btn" data-info="sync-guide">ⓘ</button></div>
@@ -1743,7 +1827,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           <section class="pv-card pv-card-lg tn-card" aria-labelledby="tnTrackTitle">
             <div class="tn-card-head">
               <h3 id="tnTrackTitle" class="tn-card-title">Tons de cada pista</h3>
-              <div id="toneTrackRow" class="tn-shared" hidden>
+              <div id="toneTrackRow" class="tn-shared" data-adv hidden>
                 <label class="tn-check"><input type="checkbox" id="toneShared" checked> Mesmos tons em todas as pistas</label>
               </div>
             </div>
@@ -1754,19 +1838,19 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 <select id="toneBaseSel" class="tn-select"><option value="">—</option></select>
                 <span class="tn-hint">O tom com que a pista começa.</span>
               </div>
-              <div class="tn-field">
+              <div class="tn-field" data-adv>
                 <span class="tn-label">Tons para onde pode trocar <span class="tn-label-sub">(máx. 4)</span></span>
                 <div id="toneExtraChecks" class="tn-pills"></div>
               </div>
             </div>
-            <div id="toneTimeline" hidden></div>
-            <div class="tn-field">
+            <div id="toneTimeline" data-adv hidden></div>
+            <div class="tn-field" data-adv>
               <span class="tn-label">Mudanças de tom</span>
               <div id="toneChangesList" class="tn-changes"></div>
             </div>
           </section>
         </div>
-        <section id="toneSuggestCard" class="pv-card pv-card-lg tn-card" aria-labelledby="tnSugTitle" hidden>
+        <section id="toneSuggestCard" class="pv-card pv-card-lg tn-card" aria-labelledby="tnSugTitle" data-adv hidden>
           <div class="tn-card-head">
             <h3 id="tnSugTitle" class="tn-card-title">Sugestões por secção</h3>
             <button class="info-btn" data-info="tone-sections">ⓘ</button>
@@ -1775,7 +1859,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           <p class="tn-hint ts-note">Isto é só uma sugestão: não muda nada até carregares em "Aplicar a esta pista". O que cada pista toca é o que está em "Tons de cada pista", acima — aí podes sempre mudar à mão. Trocar um tom sugerido troca-o em todas as partes e pistas onde é sugerido.</p>
           <div id="toneSuggestBody" class="tn-stack"></div>
         </section>
-        <section id="tonePlanCard" class="pv-card pv-card-lg tn-card" aria-labelledby="tnPlanTitle" hidden>
+        <section id="tonePlanCard" class="pv-card pv-card-lg tn-card" aria-labelledby="tnPlanTitle" data-adv hidden>
           <div class="tn-card-head">
             <h3 id="tnPlanTitle" class="tn-card-title">Importar tons de um texto</h3>
             <button class="info-btn" data-info="tone-plan">ⓘ</button>
@@ -1814,7 +1898,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
               <button class="info-btn" data-info="lyrics-lookup">ⓘ</button>
               <span id="lyricsSearchInfo" class="ly-status"></span>
             </div>
-            <div class="ly-find-row">
+            <div class="ly-find-row" data-adv>
               <button type="button" id="detectLyrics" class="secondary tn-btn"><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg>Detetar letra na gravação</button>
               <button class="info-btn" data-info="lyrics">ⓘ</button>
               <span id="lyricsInfo" class="ly-status"></span>
@@ -1845,7 +1929,7 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
                 <button type="button" id="lyricsShiftFwd" class="secondary tn-btn ly-step" title="Mais tarde" aria-label="Mais tarde">+</button>
               </div>
             </div>
-            <div class="tn-field">
+            <div class="tn-field" data-adv>
               <span class="tn-label">Cada palavra pela voz</span>
               <div class="ly-sync-row">
                 <button type="button" id="lyricsAlign" class="secondary tn-btn" title="Mede na gravação o tempo de cada palavra (WhisperX)"><svg class="ic" aria-hidden="true"><use href="#i-wand"/></svg>Sincronizar com a gravação</button>
@@ -1861,9 +1945,9 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <span id="lyricsCount" class="ts-track-meta"></span>
             <div class="ly-word-acts">
               <button type="button" id="addLyricRow" class="secondary tn-btn"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Palavra</button>
-              <button type="button" id="sortLyrics" class="secondary tn-btn">Ordenar por tempo</button>
-              <button type="button" id="exportLrc" class="secondary tn-btn"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg>Exportar LRC</button>
-              <button type="button" id="lyricsFromScore" class="secondary tn-btn" title="Descarta estas linhas e volta a ler a letra do ficheiro Guitar Pro na próxima reconstrução" hidden><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg>Voltar à letra da pauta</button>
+              <button type="button" id="sortLyrics" class="secondary tn-btn" data-adv>Ordenar por tempo</button>
+              <button type="button" id="exportLrc" class="secondary tn-btn" data-adv><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg>Exportar LRC</button>
+              <button type="button" id="lyricsFromScore" class="secondary tn-btn" data-adv title="Descarta estas linhas e volta a ler a letra do ficheiro Guitar Pro na próxima reconstrução" hidden><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg>Voltar à letra da pauta</button>
             </div>
           </div>
           <p id="lyricsEmpty" class="tn-empty" hidden>Ainda não há letra. Procura-a online, deteta-a na gravação ou acrescenta palavras.</p>
@@ -1920,17 +2004,17 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
         <div class="pv-grid2">
           <section class="pv-card pv-card-lg">
             <h3 class="pv-card-title">Descarregar</h3>
-            <div class="downloads" id="downloads"></div>
             <div class="pv-export-row install-row" id="installRow" hidden>
               <div><b>Instalar no jogo</b><span class="meta" id="installInfo"></span></div>
               <button type="button" id="installBtn"><svg class="ic" aria-hidden="true"><use href="#i-gamepad"/></svg><span id="installBtnLabel">Instalar no jogo</span></button>
             </div>
-            <div class="pv-export-row project-export-row" id="projectExportRow" hidden>
+            <div class="downloads" id="downloads"></div>
+            <div class="pv-export-row project-export-row" id="projectExportRow" data-adv hidden>
               <div><b>Projeto RockForge (.rfproj)</b><span class="meta">tudo num ficheiro — a gravação, o ficheiro Guitar Pro, a capa e todas as correções — para abrir noutro computador ou guardar uma cópia</span><span class="meta" id="projectExportInfo"></span>
                 <label class="check" id="projectExportStemsLbl" hidden><input type="checkbox" id="projectExportStems"> <span id="projectExportStemsText"></span></label></div>
               <button type="button" id="projectExportBtn" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg>Exportar projeto</button>
             </div>
-            <div class="needs-review pv-export-gp" hidden>
+            <div class="needs-review pv-export-gp" data-adv hidden>
               <div class="pv-export-row">
                 <div><b>Guitar Pro com os andamentos corrigidos</b><span class="meta">cópia do teu ficheiro, só muda o tempo (o original nunca é tocado)</span></div>
                 <button type="button" id="exportGpBtn" class="secondary"><svg class="ic" aria-hidden="true"><use href="#i-music"/></svg>Exportar</button>
@@ -1944,7 +2028,8 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
           </section>
           <section id="completeness"></section>
         </div>
-        <section class="pv-card pv-card-lg needs-review" hidden>
+        <p class="meta" data-simple-only>O bundle do DLC Builder, o projeto .rfproj, os ficheiros Guitar Pro corrigidos e as opções da construção estão no modo <button type="button" class="link-btn" data-go-advanced>Avançado</button>.</p>
+        <section class="pv-card pv-card-lg needs-review" data-adv hidden>
           <h3 class="pv-card-title">Opções da construção</h3>
           <div id="tuningInfo"></div>
           <form id="rebuildForm" class="tuninggrid">
@@ -1996,12 +2081,12 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
   <div class="pv-body">
     <nav class="pv-rail" aria-label="Secções das definições">
       <button type="button" data-settings-tab="geral" class="active"><svg class="ic" aria-hidden="true"><use href="#i-globe"/></svg><span>Geral</span></button>
-      <button type="button" data-settings-tab="ai"><svg class="ic" aria-hidden="true"><use href="#i-guitar"/></svg><span>Tons e IA</span></button>
+      <button type="button" data-settings-tab="ai" data-adv><svg class="ic" aria-hidden="true"><use href="#i-guitar"/></svg><span>Tons e IA</span></button>
       <button type="button" data-settings-tab="software"><svg class="ic" aria-hidden="true"><use href="#i-activity"/></svg><span>Software</span><span class="rail-dot" id="sysRailDot" hidden></span></button>
-      <button type="button" data-settings-tab="ml"><svg class="ic" aria-hidden="true"><use href="#i-terminal"/></svg><span>Python ML</span></button>
-      <button type="button" data-settings-tab="stems"><svg class="ic" aria-hidden="true"><use href="#i-layers"/></svg><span>Stems</span></button>
-      <button type="button" data-settings-tab="volume"><svg class="ic" aria-hidden="true"><use href="#i-volume"/></svg><span>Volume</span></button>
-      <button type="button" data-settings-tab="gpu"><svg class="ic" aria-hidden="true"><use href="#i-cpu"/></svg><span>GPU</span></button>
+      <button type="button" data-settings-tab="ml" data-adv><svg class="ic" aria-hidden="true"><use href="#i-terminal"/></svg><span>Python ML</span></button>
+      <button type="button" data-settings-tab="stems" data-adv><svg class="ic" aria-hidden="true"><use href="#i-layers"/></svg><span>Stems</span></button>
+      <button type="button" data-settings-tab="volume" data-adv><svg class="ic" aria-hidden="true"><use href="#i-volume"/></svg><span>Volume</span></button>
+      <button type="button" data-settings-tab="gpu" data-adv><svg class="ic" aria-hidden="true"><use href="#i-cpu"/></svg><span>GPU</span></button>
     </nav>
     <div class="pv-scroll">
 
@@ -2016,6 +2101,14 @@ button.album-card.selected { border-color:var(--accent); background:#221d1a; }
             <option value="pt">Português</option>
           </select>
           <div class="pv-card-desc">Mudar de idioma recarrega a página.</div>
+        </div>
+        <div class="pv-card pv-card-lg">
+          <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-layers"/></svg>Nível de detalhe</div>
+          <div class="pv-seg ui-level" role="group" aria-label="Nível de detalhe">
+            <button type="button" data-ui-level="simple">Simples</button>
+            <button type="button" data-ui-level="advanced">Avançado</button>
+          </div>
+          <div class="pv-card-desc"><b>Simples</b> mostra só o que é preciso para levar uma música ao jogo, pela ordem em que se usa. <b>Avançado</b> mostra todas as ferramentas (pista 3D, barras de áudio, tons por pista, exportações Guitar Pro, Python ML, GPU…). Nada se perde ao mudar: o que já fizeste com uma ferramenta avançada continua a valer.</div>
         </div>
         <div class="pv-card pv-card-lg" id="aboutCard">
           <div class="pv-card-head"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg>Sobre o RockForge</div>

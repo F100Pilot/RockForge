@@ -6,6 +6,21 @@ As alterações de cada versão. As entradas também vão em inglês, no `CHANGE
 
 ## [Por lançar]
 
+### Novidades
+
+- **Modo Simples para a aplicação toda.** Na barra de cima do projeto (e em **Definições →
+  Geral → Nível de detalhe**) escolhes **Simples** ou **Avançado**. Simples mostra só o que é
+  preciso para levar uma música ao jogo; Avançado mostra todas as ferramentas, como até agora.
+  Quem começa a usar o RockForge começa em Simples; quem já o usava fica em Avançado. Nada se
+  perde ao mudar.
+- **O próximo passo, na barra do projeto.** Em vez da etiqueta "Falta: …", um botão diz uma
+  coisa a fazer a seguir: sincronizar com a gravação, escolher os tons (opcional), pôr uma capa
+  (opcional) e instalar no jogo. Um clique leva-te lá; a seta mostra o caminho todo e deixa
+  saltar um passo opcional. Os cartões da página inicial dizem o mesmo próximo passo.
+- **Página inicial mais simples.** Quem abre o RockForge pela primeira vez vê um cartão de
+  boas-vindas com duas entradas: o projeto de exemplo com o tutorial, ou um projeto novo.
+  Importar projeto, Lote, Projeto de exemplo, o café e a estrela passaram para o menu **Mais**.
+
 ## [0.12.0 beta 13] — 2026-11-21
 
 ### Novidades

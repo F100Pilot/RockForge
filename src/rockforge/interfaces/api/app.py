@@ -507,7 +507,7 @@ def _check_imported_params(params: dict[str, object]) -> None:
         if params.get(key) is not None and not isinstance(params[key], bool):
             raise bad(key, "verdadeiro ou falso")
     for key in ("synced_arrangements", "tone_names", "bar_times", "tone_changes", "tones",
-                "vocal_melody", "section_overrides"):
+                "vocal_melody", "section_overrides", "skipped_steps"):
         if params.get(key) is not None and not isinstance(params[key], list):
             raise bad(key, "uma lista")
     for key in ("arrangement_sync", "estimated_bars", "tuning_overrides", "arrangement_tones",
@@ -719,6 +719,7 @@ def _to_out(job: Job) -> JobOut:
         sync_edited=_sync_edited(params),
         sync_confirmed=bool(params.get("sync_confirmed")),
         sync_main=_param_text(params.get("sync_main")),
+        skipped_steps=_skipped_steps(params),
         sync_source=_sync_source(params),
         synced_arrangements=_synced_arrangements(params, job.bundle_dir),
         recording_from_gp=bool(params.get("recording_from_gp")),
@@ -727,6 +728,16 @@ def _to_out(job: Job) -> JobOut:
         in_game=_in_game(job.id, params),
         in_game_path=_in_game_path(params),
     )
+
+
+SKIPPABLE_STEPS = ("tones", "cover", "install")
+
+
+def _skipped_steps(params: Mapping[str, object]) -> list[str]:
+    """The optional steps the user skipped, in their order, unknown names left out."""
+    raw = params.get("skipped_steps")
+    given = set(raw) if isinstance(raw, list) else set()
+    return [s for s in SKIPPABLE_STEPS if s in given]
 
 
 def _in_game_path(params: Mapping[str, object]) -> str | None:

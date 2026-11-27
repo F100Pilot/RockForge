@@ -98,6 +98,9 @@ class JobOut(BaseModel):
     # The chart whose sync corrections the viewer carries onto the others
     # ("Pista principal"); None = each chart on its own.
     sync_main: str | None = None
+    # The optional steps of "Próximo passo" the user said to skip (tones,
+    # cover, install) — the top bar then points at the next one.
+    skipped_steps: list[str] = Field(default_factory=list)
     # Why the chart counts as in sync, for the badge on the project card and the
     # score: "confirmed" (the user said so), "gp" (synced in Guitar Pro 8 — the
     # file carries its own sync points), "songsterr" (the bar times of a
@@ -1076,6 +1079,15 @@ class SyncConfirmedIn(BaseModel):
     # One chart ("Lead", "Alternate Rhythm"…): each track is synchronised on its
     # own. None = the whole song (the checklist's button), i.e. every chart.
     arrangement: ChartName | None = None
+
+
+# The steps of the project's "Próximo passo" that can be skipped: the sync is
+# never skipped (it is what makes the chart playable), the rest are optional.
+SkippableStep = Literal["tones", "cover", "install"]
+
+
+class SkippedStepsIn(BaseModel):
+    steps: list[SkippableStep] = Field(default_factory=list, max_length=3)
 
 
 class SyncMainIn(BaseModel):

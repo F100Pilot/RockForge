@@ -6,6 +6,21 @@ The changes in each version. Every entry is also in Portuguese, in `CHANGELOG.md
 
 ## [Unreleased]
 
+### New
+
+- **Simple mode for the whole app.** In the project's top bar (and in **Settings → General →
+  Level of detail**) you choose **Simple** or **Advanced**. Simple shows only what it takes to
+  get a song into the game; Advanced shows every tool, as before. Someone new to RockForge
+  starts in Simple; someone who already used it stays in Advanced. Nothing is lost when you
+  switch.
+- **The next step, in the project's top bar.** Instead of the "Missing: …" chip, a button says
+  one thing to do next: sync with the recording, choose the tones (optional), add a cover
+  (optional) and install in the game. A click takes you there; the arrow shows the whole path
+  and lets you skip an optional step. The home page's cards show the same next step.
+- **A simpler home page.** Someone opening RockForge for the first time sees a welcome card with
+  two ways in: the example project with its tutorial, or a new project. Import project, Batch,
+  Example project, the coffee and the star moved into the **More** menu.
+
 ## [0.12.0 beta 13] — 2026-11-21
 
 ### New

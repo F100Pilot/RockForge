@@ -4947,6 +4947,25 @@ def test_the_main_chart_for_sync_is_remembered(client: TestClient, tmp_path) -> 
     assert client.patch("/jobs/nope/sync-main", json={}).status_code == 404
 
 
+def test_the_steps_skipped_in_the_top_bar_are_remembered_and_inherited(
+    client: TestClient, tmp_path
+) -> None:
+    """"Próximo passo": the optional steps the user skipped are stored in their
+    order, come back on the job, a fork inherits them, the sync cannot be
+    skipped, and an empty list forgets them."""
+    job = _gp_job(client, tmp_path)
+    assert job["skipped_steps"] == []
+    r = client.patch(f"/jobs/{job['id']}/skipped-steps", json={"steps": ["install", "tones"]})
+    assert r.status_code == 200 and r.json()["skipped_steps"] == ["tones", "install"]
+    fork = client.post(f"/jobs/{job['id']}/rebuild", json={}).json()
+    assert fork["skipped_steps"] == ["tones", "install"]
+    assert client.patch(f"/jobs/{job['id']}/skipped-steps",
+                        json={"steps": ["sync"]}).status_code == 422
+    assert client.patch(f"/jobs/{job['id']}/skipped-steps",
+                        json={"steps": []}).json()["skipped_steps"] == []
+    assert client.patch("/jobs/nope/skipped-steps", json={"steps": []}).status_code == 404
+
+
 def test_attacks_marked_by_ear_are_stored_per_chart_and_reach_the_viewer(
     client: TestClient, tmp_path
 ) -> None:

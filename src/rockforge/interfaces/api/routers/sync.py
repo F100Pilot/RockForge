@@ -22,6 +22,7 @@ from rockforge.interfaces.api.schemas import (
     MarkedAttacksIn,
     MarkedAttacksOut,
     RebuildIn,
+    SkippedStepsIn,
     SyncConfirmedIn,
     SyncMainIn,
     SyncStateIn,
@@ -543,6 +544,24 @@ def set_sync_confirmed(job_id: str, payload: SyncConfirmedIn) -> JobOut:
             payload.confirmed if payload.arrangement is None
             else bool(built) and all(k in synced for k in built)
         )
+        job.params = params
+        session.commit()
+        return api._to_out(job)
+
+
+@router.patch("/jobs/{job_id}/skipped-steps", response_model=JobOut)
+def set_skipped_steps(job_id: str, payload: SkippedStepsIn) -> JobOut:
+    """The optional steps of the top bar's "Próximo passo" the user skipped
+    (tones, cover, install), sent whole. A pointer for the UI only: nothing is
+    rebuilt, and it lives in `params`, so a rebuild/reload fork inherits it."""
+    with api._session_factory() as session:
+        job = api._job_or_404(session, job_id)
+        params = dict(job.params or {})
+        steps = [s for s in api.SKIPPABLE_STEPS if s in payload.steps]
+        if steps:
+            params["skipped_steps"] = steps
+        else:
+            params.pop("skipped_steps", None)
         job.params = params
         session.commit()
         return api._to_out(job)

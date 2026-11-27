@@ -1181,6 +1181,7 @@ async function openSettings(pageWanted) {
   } catch { /* keep defaults */ }
   let page = 'geral';
   try { page = localStorage.getItem('rf-settings-page') || page; } catch { /* storage blocked */ }
+  if (uiSimple && document.querySelector(`[data-settings-tab="${page}"]`)?.hasAttribute('data-adv')) page = 'geral';
   showSettingsPage(typeof pageWanted === 'string' ? pageWanted : page);
   document.getElementById('settingsOverlay').hidden = false;
   loadGuitarProfile();
@@ -1321,6 +1322,20 @@ function firstSeenDay() {
   return today;
 }
 const appFirstSeen = firstSeenDay();
+// Simples or Avançado (setUiLevel), decided once: someone who already used RockForge
+// before this choice existed keeps every tool (Avançado), someone new starts in
+// Simples and gets the welcome card. Blocked storage = new, every time.
+const uiLevelAtStart = (() => {
+  try {
+    const stored = localStorage.getItem('rf-ui-level');
+    if (stored === 'simple' || stored === 'advanced') return stored;
+    const before = !!appFirstSeen && appFirstSeen !== new Date().toISOString().slice(0, 10);
+    const level = before ? 'advanced' : 'simple';
+    localStorage.setItem('rf-ui-level', level);
+    if (localStorage.getItem('rf-welcome') === null) localStorage.setItem('rf-welcome', before ? 'hidden' : 'show');
+    return level;
+  } catch { return 'simple'; }
+})();
 function shouldAskForStar() {
   const s = starState();
   if (s.done || !appFirstSeen) return false;
@@ -1657,7 +1672,6 @@ const SYNC_SOURCE_TEXT = {
   songsterr_tab: T('Temporizada pelo andamento da tab do Songsterr, compasso a compasso e com as casas decimais: bate com uma gravação que siga a tab, como o MP3 do Songsterr, se o Início estiver no compasso 1. Ouve e, quando as notas baterem, marca cada pista.'),
   adjusted: T('Fizeste correções de início/andamento. Quando as notas baterem com a gravação, marca-a como sincronizada.'),
 };
-function isSynced(j) { return !!j && j.sync_source === 'confirmed'; }
 // Each track is synchronised on its own, so the card speaks for the chart on
 // screen: mark it (its tab turns green), and see how many are done.
 // The Simples guide: a hint when the file already brings its timing, and step 4
@@ -1809,6 +1823,26 @@ document.getElementById('exampleProjectBtn').addEventListener('click', async () 
     btn.disabled = false;
   }
 });
+// The welcome card, for someone new (see uiLevelAtStart): the example project and
+// its tutorial, or a project of their own. "Não mostrar outra vez" ends it, and so
+// does opening the example — remembered in this browser (rf-welcome).
+function welcomeShown() {
+  try { return localStorage.getItem('rf-welcome') === 'show'; } catch { return false; }
+}
+function hideWelcome() {
+  try { localStorage.setItem('rf-welcome', 'hidden'); } catch { /* storage blocked */ }
+  document.getElementById('homeWelcome').hidden = true;
+}
+document.getElementById('homeWelcome').hidden = !welcomeShown();
+document.getElementById('welcomeHide').addEventListener('click', hideWelcome);
+document.getElementById('welcomeExample').addEventListener('click', () => {
+  // One example is enough: open the newest one there is, else make it.
+  const made = jobsCache.filter(j => j.artist === 'RockForge' && j.source_type === 'gp')
+    .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))[0];
+  hideWelcome();
+  if (made) selectJob(made.id);
+  else document.getElementById('exampleProjectBtn').click();
+});
 document.getElementById('importProjectFile').addEventListener('change', e => {
   const file = e.target.files && e.target.files[0];
   e.target.value = '';
@@ -1932,8 +1966,7 @@ function renderCompleteness(j) {
   const parts = alerts.map(r => r.short || r.title.toLowerCase());
   if (alerts.length)
     html += `<div class="complete-banner">${icon('alert')} ${T('Ainda falta: <b>{parts}</b>. Podes descarregar na mesma, mas o PSARC fica mais pobre.', { parts: esc(parts.join(', ')) })}</div>`;
-  setStatusChip(alerts.length ? 'warn' : 'ok',
-    alerts.length ? T('Falta: {parts}', { parts: parts.join(', ') }) : T('Pronto a usar'), alerts.length ? 'alert' : 'check');
+  renderNextStep(j, rows.find(r => r.state === 'err') || null);
   for (const r of rows) {
     const cls = r.state === 'err' ? ' err' : r.state === 'warn' ? ' warn' : r.state === 'ok' ? ' ok' : '';
     const acts = [[r.act, r.actLabel], [r.act2, r.act2Label]].filter(([a]) => a)
@@ -2898,10 +2931,12 @@ function jobCardStatus(j) {
   if (j.status === 'pending') return ['run', T('Na fila…'), 'clock'];
   if (j.status === 'running') return ['run', T('A construir…'), 'clock'];
   if (!j.bundle_available) return ['warn', T('Sem ficheiros'), 'alert'];
-  const gaps = [];
-  if (!j.psarc_available) gaps.push('PSARC');
-  if (!j.cover_art) gaps.push(T('capa'));
-  return gaps.length ? ['warn', T('Falta: {list}', { list: gaps.join(', ') }), 'alert'] : ['ok', T('Pronto a jogar'), 'check'];
+  if (!j.psarc_available) return ['err', T('Falta: {list}', { list: 'PSARC' }), 'alert'];
+  if (j.psarc_has_audio === false) return ['err', T('PSARC sem som'), 'alert'];
+  // The same next step as the project's top bar ("Próximo passo").
+  const cur = currentStep(projectSteps(j));
+  return cur ? [cur.optional ? 'unk' : 'warn', T('Próximo: {step}', { step: cur.short }), cur.optional ? 'info' : 'alert']
+    : ['ok', T('Pronto a jogar'), 'check'];
 }
 function renderJobCards() {
   const grid = document.getElementById('jobsGrid');
@@ -2923,8 +2958,6 @@ function renderJobCards() {
           <div class="proj-title">${esc(j.title)}</div>
           <div class="proj-artist">${esc(j.artist)}</div>
           <span class="pv-chip ${kind}">${icon(ico)}${esc(text)}</span>
-          ${isSynced(j) ? `<span class="pv-chip ok" title="${esc(SYNC_SOURCE_TEXT[j.sync_source])}">${icon('timer')}${T('Sincronizada')}</span>` : ''}
-          ${j.status === 'completed' && !j.has_tones ? `<span class="pv-chip unk" title="${esc(T('Sem tons teus: o tom por defeito do DLC Builder (Lead/Combo: Marshall Plexi; Rhythm: Orange AD50).'))}">${icon('wave')}${T('Tons standard')}</span>` : ''}
         </div>
       </button>
       <button type="button" class="proj-del" title="${T('Remover projeto')}" aria-label="${T('Remover {title}', { title: esc(j.title) })}">${icon('trash')}</button>`;
@@ -2977,16 +3010,150 @@ function renderDetailHead(j) {
        ${j.rebuilt_from ? `<button type="button" onclick="selectJob('${j.rebuilt_from}')" title="${T('Abrir a versão de onde esta foi reconstruída — a anterior nunca é apagada')}">${icon('undo')}${T('Versão anterior')}</button>` : ''}
      </div>`;
 }
-// The chip beside the title: what the project still needs, at a glance.
-// Clicking it opens the Exportar page, where each gap has its fix.
+// The chip beside the title while a project builds or failed: what is going on.
+// Clicking it opens the Exportar page, where the build's progress and errors are.
+// A built project shows its next step instead (renderNextStep).
 function setStatusChip(kind, text, ico) {
   const chip = document.getElementById('pvStatusChip');
   chip.className = `pv-chip ${kind}`;
   chip.innerHTML = `${icon(ico)}${esc(text)}`;
   chip.title = text;
   chip.hidden = false;
+  nextStepState = null;
+  document.getElementById('nextStepMore').hidden = true;
+  document.getElementById('nextStepMenu').hidden = true;
 }
-document.getElementById('pvStatusChip').addEventListener('click', () => showSection('exportar'));
+
+// ── "Próximo passo": one thing to do next, in the project's top bar ──────────
+// It replaces the old "Falta: …" chip ("a aplicação é confusa … não sabem o que
+// fazer", 2026-11-27). Four steps in order: sync (the chart against the
+// recording, every track marked), tones and cover (optional), install in the game.
+// A step is done by what the project says (JobOut), or skipped by the user
+// (PATCH /skipped-steps — the sync can never be skipped). Something that keeps the
+// game from reading the song (the checklist's red rows: no Wwise, a broken PSARC)
+// comes before any step. A click goes to the step's page; the arrow lists them all.
+const PROJECT_STEPS = [
+  { key: 'sync', label: () => T('Sincronizar com a gravação'), short: () => T('sincronizar') },
+  { key: 'tones', label: () => T('Escolher os tons'), short: () => T('tons (opcional)'), optional: true },
+  { key: 'cover', label: () => T('Pôr uma capa'), short: () => T('capa (opcional)'), optional: true },
+  { key: 'install', label: () => T('Instalar no jogo'), short: () => T('instalar no jogo'), skippable: true },
+];
+function projectSteps(j) {
+  const skipped = new Set(j.skipped_steps || []);
+  const done = {
+    sync: j.source_type !== 'gp' || j.sync_source === 'confirmed',
+    tones: !!j.has_tones,
+    cover: !!j.cover_art,
+    install: j.in_game === 'this',
+  };
+  return PROJECT_STEPS.map(d => ({
+    key: d.key, label: d.label(), short: d.short(), optional: !!d.optional,
+    skippable: !!(d.optional || d.skippable), done: done[d.key],
+    skipped: !done[d.key] && skipped.has(d.key),
+  }));
+}
+const currentStep = steps => steps.find(s => !s.done && !s.skipped) || null;
+let nextStepState = null;  // {job, steps, cur, blocker} of the project on screen
+function stepDots(steps, cur) {
+  return '<span class="step-dots" aria-hidden="true">' + steps.map(s =>
+    `<span class="${s === cur ? 'cur' : s.done ? 'done' : s.skipped ? 'skip' : 'todo'}"></span>`).join('') + '</span>';
+}
+function renderNextStep(j, blocker) {
+  const chip = document.getElementById('pvStatusChip');
+  const steps = projectSteps(j);
+  const cur = currentStep(steps);
+  nextStepState = { job: j.id, steps, cur, blocker };
+  if (blocker) {
+    chip.className = 'pv-chip step err';
+    chip.innerHTML = `${icon(blocker.ico || 'alert')}<span class="step-txt"><span class="step-name">${esc(blocker.title)}</span></span>`;
+    chip.title = blocker.note || blocker.title;
+  } else if (!cur) {
+    chip.className = 'pv-chip step ok';
+    chip.innerHTML = `${icon('check')}<span class="step-txt"><span class="step-name">${T('Pronto a jogar')}</span></span>`;
+    chip.title = T('Todos os passos feitos: a música está no jogo.');
+  } else {
+    const i = steps.indexOf(cur) + 1;
+    chip.className = `pv-chip step ${cur.optional ? 'opt' : 'now'}`;
+    chip.innerHTML = `<span class="step-txt"><span class="step-k">${T('Próximo passo {i} de {n}', { i, n: steps.length })}` +
+      `${cur.optional ? ` · ${T('opcional')}` : ''}</span><span class="step-name">${esc(cur.label)}</span></span>${stepDots(steps, cur)}`;
+    chip.title = T('Próximo passo: {step}. Clica para ir lá; a seta mostra o caminho todo.', { step: cur.label });
+  }
+  chip.hidden = false;
+  document.getElementById('nextStepMore').hidden = false;
+  renderNextStepMenu();
+}
+function renderNextStepMenu() {
+  const menu = document.getElementById('nextStepMenu');
+  const st = nextStepState;
+  if (!st) { menu.innerHTML = ''; return; }
+  let html = `<div class="dd-cap">${T('O caminho deste projeto')}</div>`;
+  if (st.blocker) {
+    html += `<div class="ns-block">${icon('alert')}<span><b>${esc(st.blocker.title)}</b>` +
+      `${st.blocker.note ? `<span>${esc(st.blocker.note.slice(0, 300))}</span>` : ''}</span></div>`;
+  }
+  st.steps.forEach((s, i) => {
+    const state = s === st.cur ? 'cur' : s.done ? 'done' : s.skipped ? 'skip' : 'todo';
+    const what = s.done ? T('Feito') : s.skipped ? T('Saltado') : s === st.cur ? T('Agora') : T('Depois');
+    const acts = [`<button type="button" class="secondary" data-step-go="${s.key}">${T('Ir')}</button>`];
+    if (s.skipped) acts.push(`<button type="button" class="secondary" data-step-skip="${s.key}" data-skip="0">${T('Retomar')}</button>`);
+    else if (s.skippable && !s.done) acts.push(`<button type="button" class="secondary" data-step-skip="${s.key}" data-skip="1">${s.key === 'install' ? T('Já tratei disto') : T('Saltar')}</button>`);
+    html += `<div class="ns-row ${state}"><span class="ns-num">${s.done ? icon('check') : i + 1}</span>` +
+      `<span class="ns-txt"><b>${esc(s.label)}</b><span>${what}${s.optional ? ` · ${T('opcional')}` : ''}</span></span>` +
+      `<span class="ns-acts">${acts.join('')}</span></div>`;
+  });
+  menu.innerHTML = html;
+}
+function closeNextStepMenu() {
+  document.getElementById('nextStepMenu').hidden = true;
+  document.getElementById('nextStepMore').setAttribute('aria-expanded', 'false');
+}
+function flashCard(id) {
+  const card = document.getElementById(id);
+  if (!card || card.hidden) return;
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  card.classList.add('guide-flash');
+  setTimeout(() => card.classList.remove('guide-flash'), 1500);
+}
+function goToStep(key) {
+  if (key === 'sync') {
+    showSection('partitura');
+    showInspector('sync');
+    flashCard(uiSimple ? 'syncGuide' : 'syncStateCard');
+  } else if (key === 'tones') showSection('tons');
+  else if (key === 'cover') showSection('capa');
+  else { showSection('exportar'); flashCard('installRow'); }
+}
+async function setStepSkipped(key, skip) {
+  const j = selectedJob;
+  if (!j) return;
+  const steps = new Set(j.skipped_steps || []);
+  if (skip) steps.add(key); else steps.delete(key);
+  try {
+    const out = await getJSON(`/jobs/${j.id}/skipped-steps`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ steps: [...steps] }) });
+    if (selectedJob !== j) return;
+    j.skipped_steps = out.skipped_steps;
+    renderCompleteness(j);
+    refreshJobs();
+  } catch (e) {
+    toast(T('Não foi possível guardar: {m}', { m: e.message }));
+  }
+}
+document.getElementById('pvStatusChip').addEventListener('click', () => {
+  const st = nextStepState;
+  if (!st || !selectedJob || st.job !== selectedJob.id) { showSection('exportar'); return; }
+  if (st.blocker) {
+    if (st.blocker.act && COMPLETE_ACTIONS[st.blocker.act]) COMPLETE_ACTIONS[st.blocker.act]();
+    else showSection('exportar');
+  } else if (st.cur) goToStep(st.cur.key);
+  else showSection('exportar');
+});
+document.getElementById('nextStepMenu').addEventListener('click', e => {
+  const go = e.target.closest('[data-step-go]');
+  if (go) { closeNextStepMenu(); goToStep(go.dataset.stepGo); return; }
+  const skip = e.target.closest('[data-step-skip]');
+  if (skip) setStepSkipped(skip.dataset.stepSkip, skip.dataset.skip === '1');
+});
 let sectionShownFor = null;  // the job whose first "ready" view opened Partitura
 
 // The project the user asked to see. A poll (or a slow first load) for another
@@ -3091,7 +3258,7 @@ async function selectJob(id, { poll = false, force = false } = {}) {
   if (j.psarc_available)
     dl.innerHTML += `<a class="dl-card" href="/jobs/${j.id}/psarc">${icon('gamepad')}<b>${T('PSARC para o jogo')}</b><span>${T('pronto a copiar para a pasta dlc do Rocksmith')}</span></a>`;
   if (j.bundle_available)
-    dl.innerHTML += `<a class="dl-card" href="/jobs/${j.id}/bundle">${icon('package')}<b>${T('Bundle DLC Builder')}</b><span>${T('XML, áudio e projeto .rs2dlc para abrir no DLC Builder')}</span></a>`;
+    dl.innerHTML += `<a class="dl-card" data-adv href="/jobs/${j.id}/bundle">${icon('package')}<b>${T('Bundle DLC Builder')}</b><span>${T('XML, áudio e projeto .rs2dlc para abrir no DLC Builder')}</span></a>`;
   if (j.bundle_available && !j.psarc_available) dl.innerHTML += `<span class="meta">${T('PSARC requer Wwise — ver README')}</span>`;
   if (!j.bundle_available) dl.innerHTML = '<span class="meta">' + T('Os ficheiros aparecem aqui quando a construção terminar.') + '</span>';
   renderInstallRow(j);
@@ -11522,7 +11689,7 @@ function wireDropdown(triggerId, menuId) {
   const trigger = document.getElementById(triggerId);
   const menu = document.getElementById(menuId);
   if (!trigger || !menu) return;
-  const items = () => [...menu.querySelectorAll('button.dd-item:not(:disabled)')];
+  const items = () => [...menu.querySelectorAll('button.dd-item:not(:disabled), a.dd-item')];
   const close = (refocus) => {
     if (menu.hidden) return;
     menu.hidden = true;
@@ -11556,7 +11723,7 @@ function wireDropdown(triggerId, menuId) {
     (menu.querySelector('.active-mode') || items()[0])?.focus();
   };
   trigger.addEventListener('click', () => (menu.hidden ? open() : close(false)));
-  menu.addEventListener('click', e => { if (e.target.closest('button.dd-item')) close(false); });
+  menu.addEventListener('click', e => { if (e.target.closest('button.dd-item, a.dd-item')) close(false); });
   menu.addEventListener('keydown', e => {
     if (e.key === 'Escape') { e.preventDefault(); close(true); return; }
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
@@ -11576,6 +11743,8 @@ function wireDropdown(triggerId, menuId) {
   });
 }
 wireDropdown('modeMenuBtn', 'modeMenu');
+wireDropdown('homeMoreBtn', 'homeMoreMenu');
+wireDropdown('nextStepMore', 'nextStepMenu');
 wireDropdown('notesMenuBtn', 'notesMenu');
 wireDropdown('audioMenuBtn', 'audioMenu');
 SYNC_MODE_BUTTONS.forEach(([id], i) => {
@@ -11591,36 +11760,52 @@ SYNC_MODE_BUTTONS.forEach(([id, mode]) => {
 });
 setSyncMode(syncMode);  // show the help line for the initial mode
 
-// "Simples" / "Avançado" in Sincronização ("too many options and whistles on the
-// tempo correction page", r/rocksmith): Simples keeps what the usual order needs —
-// start, tempo, "Corrigir daqui", confirm — with a guide on top; everything marked
-// data-sync-adv (the CSS hides it) waits under Avançado. Remembered per browser.
-let syncSimple = true;
-try { syncSimple = localStorage.getItem('rf-sync-level') !== 'advanced'; } catch { /* no storage */ }
-const modeOffered = id => !(syncSimple && document.getElementById(id)?.hasAttribute('data-sync-adv'));
-function setSyncLevel(simple) {
-  syncSimple = simple;
+// "Simples" / "Avançado" for the whole app ("a aplicação é confusa porque tem muitas
+// opções", 2026-11-27; it began in Sincronização: "too many options and whistles on
+// the tempo correction page", r/rocksmith). Simples keeps what the usual way through
+// a song needs; everything marked data-adv (any page) or data-sync-adv (the sync
+// tools) is hidden by the CSS and waits under Avançado. Nothing is removed and no
+// edit changes. The choice is in the project's top bar and in Definições → Geral,
+// remembered per browser (uiLevelAtStart decides it the first time).
+let uiSimple = uiLevelAtStart === 'simple';
+const modeOffered = id => !(uiSimple && document.getElementById(id)?.hasAttribute('data-sync-adv'));
+// What Simples hides must not stay switched on out of sight: a panel left open, a
+// loop that keeps the playback inside it, a metronome or a filter on the music.
+const SIMPLE_OFF_SWITCHES = ['show3d', 'showPractice', 'showLegend', 'showLevels', 'showPair', 'fbAllNotes', 'syncMetro'];
+function switchOffWhatSimpleHides() {
+  for (const id of SIMPLE_OFF_SWITCHES) {
+    const chk = document.getElementById(id);
+    if (chk && chk.checked) { chk.checked = false; chk.dispatchEvent(new Event('change')); }
+  }
+  const filter = document.getElementById('playFilter');
+  if (filter && filter.value) { filter.value = ''; filter.dispatchEvent(new Event('change')); }
+  if (loopA != null || loopB != null) clearLoop();
+  if (document.querySelector('.pv-seg [data-insp="sections"].active')) showInspector('sync');
+  const page = document.querySelector('[data-settings-tab].active');
+  if (page && page.hasAttribute('data-adv')) showSettingsPage('geral');
+}
+function setUiLevel(simple, byUser = false) {
+  uiSimple = simple;
+  document.body.classList.toggle('ui-simple', simple);
   document.body.classList.toggle('sync-simple', simple);
-  document.querySelectorAll('#syncLevelSeg [data-sync-level]').forEach(b => {
-    const on = (b.dataset.syncLevel === 'simple') === simple;
+  document.querySelectorAll('[data-ui-level]').forEach(b => {
+    const on = (b.dataset.uiLevel === 'simple') === simple;
     b.classList.toggle('active', on);
     b.setAttribute('aria-pressed', String(on));
   });
-  try { localStorage.setItem('rf-sync-level', simple ? 'simple' : 'advanced'); } catch { /* no storage */ }
+  try { localStorage.setItem('rf-ui-level', simple ? 'simple' : 'advanced'); } catch { /* no storage */ }
   // A mode Simples does not offer cannot stay picked out of sight.
   const active = SYNC_MODE_BUTTONS.find(([, m]) => m === syncMode);
   if (active && !modeOffered(active[0])) setSyncMode(null);
+  if (simple && byUser) switchOffWhatSimpleHides();
 }
-document.querySelectorAll('#syncLevelSeg [data-sync-level]').forEach(b =>
-  b.addEventListener('click', () => setSyncLevel(b.dataset.syncLevel === 'simple')));
-setSyncLevel(syncSimple);
-document.querySelectorAll('#syncGuide [data-guide-go]').forEach(b => b.addEventListener('click', () => {
-  const card = document.getElementById(b.dataset.guideGo);
-  if (!card || card.hidden) return;
-  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  card.classList.add('guide-flash');
-  setTimeout(() => card.classList.remove('guide-flash'), 1500);
-}));
+document.querySelectorAll('[data-ui-level]').forEach(b =>
+  b.addEventListener('click', () => setUiLevel(b.dataset.uiLevel === 'simple', true)));
+document.querySelectorAll('[data-go-advanced]').forEach(b =>
+  b.addEventListener('click', () => setUiLevel(false, true)));
+setUiLevel(uiSimple);
+document.querySelectorAll('#syncGuide [data-guide-go]').forEach(b =>
+  b.addEventListener('click', () => flashCard(b.dataset.guideGo)));
 document.getElementById('syncGuideFix')?.addEventListener('click', () => setSyncMode('newbeat'));
 // The tutorial in the guide of the UI's language (Portuguese, else English).
 {

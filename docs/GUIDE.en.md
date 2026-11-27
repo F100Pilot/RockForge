@@ -70,12 +70,17 @@ Nothing is made up silently: whatever the app does not know or cannot do shows u
 
 ## 3. The home page
 
-- Each **project** is a card with cover, title, artist and a status: ready, in progress,
-  failed, "Synced" (once you marked every track) or "Standard tones".
+- The first time, the **Welcome to RockForge** card gives two ways in: **Open the example
+  project** (an invented song, with this guide's tutorial — [section 6](#tutorial-syncing-the-example-project))
+  or **New project**. **Don't show again** removes it.
+- Each **project** is a card with cover, title, artist and what is left: the same **next step**
+  as the project's top bar ("Next: sync", "Next: tones (optional)"…), "Ready to play", or the
+  problem that keeps the game from reading it (e.g. "PSARC without sound").
 - Filters (**All / Ready / In progress / Failed**) and a search box.
 - The first card takes a dropped Guitar Pro file: it opens the wizard with it.
-- At the top: **Buy me a coffee**, **Give it a star** (opens RockForge on GitHub), **Batch
-  (album)**, **New project** and ⚙️ **Settings**.
+- At the top: **New project**, **More ▾** (**Import project**, **Batch (album)**, **Example
+  project**, **Buy me a coffee** and **Give it a star on GitHub**), the language and ⚙️
+  **Settings**.
 - Above the projects, when it applies: **a new version** of RockForge is out (**Download** opens
   its Releases page; **Later** hides it until the next one), the **extra components** are missing
   (`.exe`; **Install now** / **Not now**), or **Wwise** is missing, so the `.psarc` would have no
@@ -209,12 +214,47 @@ bass is charted as a guitar.
 ## 5. The project page
 
 - **Top bar:** ← back to the home page; the title with **Edit info** and, after a rebuild,
-  **Previous version**; the status (click to go to Export); the **keyboard shortcuts** (the key,
-  or **?**); **Undo** and **Redo**; the number
-  of pending changes; **Apply and rebuild**; **Download**.
+  **Previous version**; the **next step** (below); **Simple / Advanced**; the **keyboard
+  shortcuts** (the key, or **?**); **Undo** and **Redo**; the number of pending changes;
+  **Apply and rebuild**; **Download**.
 - **Left bar:** the pages **Score**, **Tones**, **Lyrics**, **Cover**, **Export**, and
   **Settings** at the bottom.
 - While the build runs, Export shows its progress; when it is done, the Score opens by itself.
+
+### The next step
+
+Beside the title, a button says **one thing to do next**, out of four, in this order:
+
+1. **Sync with the recording** — done once you mark every track as synced.
+2. **Choose the tones** (optional) — done once the project has tones of your own.
+3. **Add a cover** (optional).
+4. **Install in the game** — done once this version is in the game's dlc folder.
+
+A click takes you to the right page. The arrow beside it shows the whole path: **Go** to any
+step, **Skip** an optional step (on **Install in the game**, **Already done**, for when you copy
+the PSARC by hand) and **Resume** one you skipped. Skipped steps are kept in the project and
+carried into new versions. When everything is done, the button says **Ready to play**. If
+something keeps the game from reading the song (Wwise is missing and the PSARC has no sound, or
+the PSARC has known faults), the button turns red and says so before any step.
+
+### Simple or Advanced
+
+In the project's top bar (and in Settings → General → **Level of detail**) you choose **Simple**
+or **Advanced**, for the whole app. **Simple** shows only what it takes to get a song into the
+game; **Advanced** shows every tool. Someone new to RockForge starts in Simple; someone who used
+it before this choice existed stays in Advanced. Nothing is lost when you switch: a correction,
+a tone or an export made with an advanced tool still counts. Switching to Simple turns off the
+views it hides (3D highway, Play, audio bars, legend, two tracks, all notes, metronome,
+filter, the A–B passage).
+
+Simple hides: on the Score, the A–B passage, the metronome and the filter (Audio menu), snapping,
+the 3D highway, Play (with the guitar), the legend, the audio bars, all notes, two tracks, the Sections
+tab and the Mark, Excerpt, Move following, Align bar, Tone change, Section and Fret-hand
+position (FHP) modes; on Tones, the tones per track, the tone changes, the suggestions per section and
+importing tones from a text; on Lyrics, detecting and aligning in the recording, sorting,
+exporting LRC and going back to the score's lyrics; on Export, the bundle, the .rfproj project,
+the corrected Guitar Pro files and the build options; in Settings, Tones and AI, ML Python,
+Stems, Volume and GPU.
 
 ### Apply and rebuild
 
@@ -333,21 +373,21 @@ They stay pending as before; Undo goes back to the built version.
 
 ## 6. Syncing the notes to the recording
 
-### Simple or Advanced
+### Sync in Simple
 
-At the top of the **Sync** inspector you choose **Simple** or **Advanced**. **Simple** (the
-usual one) shows only what most songs need, with the **How to sync** guide on top: the four
+In **Simple** ([section 5](#simple-or-advanced)) Sync shows only what most songs need, with the
+**How to sync** guide on top: the four
 steps in the order you use them (start, tempo, fix where it drifts, apply and confirm). Each
 **Show** takes you to that step's card, and **Pick Fix from here** turns that mode on. The
-**Mode ▾** menu keeps Drag, Fix from here and the score modes.
+**Mode ▾** menu keeps Drag, Fix from here and Edit notes.
 
 **Advanced** shows the rest: the main track, the start slider and **Detect 1st note**,
 automatic sync, the recording's attacks and the Mark, Excerpt, Move following and Align bar
-modes. The choice is remembered in the browser. Switching between them deletes no correction.
+modes. Switching between them deletes no correction.
 
 ### Tutorial: syncing the example project
 
-On the home page, **Example project** creates "Sync example": an invented song (a guitar riff,
+On the home page, **More ▾ → Example project** (or **Open the example project** on the welcome card) creates "Sync example": an invented song (a guitar riff,
 16 bars at 100 BPM) and a recording made by RockForge that, on purpose, does **not** match the
 tab in three places. Open it and, with Sync on **Simple**:
 
@@ -851,7 +891,7 @@ include them (the file is bigger, but whoever opens it need not separate them ag
 holds the project as it was last built: if there are changes not yet applied, the app asks
 first — press **Apply and rebuild** first to include them.
 
-To open one, press **Import project** on the home page (or drop the `.rfproj` on the "Drag a
+To open one, press **More ▾ → Import project** on the home page (or drop the `.rfproj` on the "Drag a
 Guitar Pro file here" card). It becomes a new project, built again with everything the file carries.
 What only made sense on the computer it came from (the copy installed in the game, the earlier
 versions) does not come along.
@@ -879,7 +919,7 @@ on **Apply and rebuild**.
 
 ## 12. A whole album at once (Batch)
 
-**Batch (album)** creates several projects at once: pick several GP files and the recordings.
+**More ▾ → Batch (album)**, on the home page, creates several projects at once: pick several GP files and the recordings.
 Each GP gets the recording with the same name (`track1.gp5` ↔ `track1.mp3`), or goes by order
 when the names do not match; a GP8 with audio inside needs no recording. Band, album and year
 are shared. Lead/Rhythm tracks are picked by name; check them afterwards in each project's

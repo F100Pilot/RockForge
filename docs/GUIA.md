@@ -69,12 +69,16 @@ aviso.
 
 ## 3. A página inicial
 
-- Cada **projeto** é um cartão com capa, título, artista e um estado: pronto, em curso, com
-  erro, "Sincronizada" (quando marcaste todas as pistas) ou "Tons standard".
+- Na primeira vez, o cartão **Bem-vindo ao RockForge** dá duas entradas: **Abrir o projeto de
+  exemplo** (uma música inventada, com o tutorial deste guia — [secção 6](#tutorial-sincronizar-o-projeto-de-exemplo))
+  ou **Novo projeto**. **Não mostrar outra vez** tira-o.
+- Cada **projeto** é um cartão com capa, título, artista e o que falta: o mesmo **próximo
+  passo** da barra do projeto ("Próximo: sincronizar", "Próximo: tons (opcional)"…), "Pronto a
+  jogar", ou o problema que impede o jogo de a ler (p. ex. "PSARC sem som").
 - Filtros (**Todos / Prontos / Em curso / Com erro**) e uma caixa de pesquisa.
 - O primeiro cartão aceita um ficheiro Guitar Pro arrastado: abre o assistente já com ele.
-- No topo: **Paga-me um café**, **Dar uma estrela** (abre o RockForge no GitHub), **Lote
-  (álbum)**, **Novo projeto** e ⚙️ **Definições**.
+- No topo: **Novo projeto**, **Mais ▾** (**Importar projeto**, **Lote (álbum)**, **Projeto de
+  exemplo**, **Paga-me um café** e **Dar uma estrela no GitHub**), o idioma e ⚙️ **Definições**.
 - Por cima dos projetos, quando se aplica: há **uma versão nova** do RockForge (**Descarregar**
   abre a página da Release; **Mais tarde** esconde o aviso até à seguinte), faltam os
   **componentes extra** (`.exe`; **Instalar agora** / **Agora não**), ou falta o **Wwise** e o
@@ -209,12 +213,48 @@ baixo no jogo com a referência a 220 Hz. Um baixo de 6 cordas faz-se como guita
 ## 5. A página do projeto
 
 - **Barra de cima:** ← volta à página inicial; o título com **Editar info** e, depois de uma
-  reconstrução, **Versão anterior**; o estado (clica para ir a Exportar); os **atalhos de
-  teclado** (a tecla, ou **?**); **Desfazer** e **Refazer**; o número de alterações pendentes; **Aplicar e reconstruir**; **Descarregar**.
+  reconstrução, **Versão anterior**; o **próximo passo** (abaixo); **Simples / Avançado**; os
+  **atalhos de teclado** (a tecla, ou **?**); **Desfazer** e **Refazer**; o número de alterações
+  pendentes; **Aplicar e reconstruir**; **Descarregar**.
 - **Barra da esquerda:** as páginas **Partitura**, **Tons**, **Letra**, **Capa**, **Exportar**,
   e **Definições** em baixo.
 - Enquanto a construção corre, vês o progresso em Exportar; quando acaba, a Partitura abre
   sozinha.
+
+### O próximo passo
+
+Ao lado do título, um botão diz **uma coisa a fazer a seguir**, de quatro, por esta ordem:
+
+1. **Sincronizar com a gravação** — feito quando marcas todas as pistas como sincronizadas.
+2. **Escolher os tons** (opcional) — feito quando o projeto tem tons teus.
+3. **Pôr uma capa** (opcional).
+4. **Instalar no jogo** — feito quando esta versão está na pasta dlc do jogo.
+
+Um clique leva-te à página certa. A seta ao lado mostra o caminho todo: **Ir** a qualquer passo,
+**Saltar** um passo opcional (em **Instalar no jogo**, **Já tratei disto**, para quando copias o
+PSARC à mão) e **Retomar** um que saltaste. Os passos saltados ficam guardados no projeto e
+passam para as versões novas. Quando está tudo feito, o botão diz **Pronto a jogar**. Se algo
+impede o jogo de ler a música (falta o Wwise e o PSARC sai sem som, ou o PSARC tem falhas
+conhecidas), o botão fica vermelho e diz isso antes de qualquer passo.
+
+### Simples ou Avançado
+
+Na barra de cima do projeto (e em Definições → Geral → **Nível de detalhe**) escolhes
+**Simples** ou **Avançado**, para a aplicação toda. **Simples** mostra só o que é preciso para
+levar uma música ao jogo; **Avançado** mostra todas as ferramentas. Quem começa a usar o
+RockForge começa em Simples; quem já o usava antes desta escolha existir fica em Avançado. Nada
+se perde ao mudar: uma correção, um tom ou uma exportação feitos com uma ferramenta avançada
+continuam a valer. Ao passar para Simples desligam-se as vistas que ele esconde (pista 3D,
+tocar, barras de áudio, legenda, duas pistas, todas as notas, metrónomo, filtro, o trecho A–B).
+
+Em Simples ficam escondidos: na Partitura, o trecho A–B, o metrónomo e o filtro (menu Áudio), o
+encaixe, a pista 3D, tocar, a legenda, as barras de áudio, todas as notas, duas pistas, o
+separador Secções e os modos Marcar, Excerto, Mover seguintes, Alinhar compasso, Mudança de
+tom, Secção e Posição da mão (FHP); em Tons, os tons por pista, as mudanças de tom, as sugestões
+por secção e importar tons de um texto; na Letra, detetar e alinhar na gravação, ordenar,
+exportar LRC e voltar à letra da pauta; em Exportar, o bundle, o projeto .rfproj, os Guitar Pro
+corrigidos e as opções da construção; nas Definições, Tons e IA, Python ML, Stems, Volume e
+GPU.
 
 ### Aplicar e reconstruir
 
@@ -334,23 +374,21 @@ queres recuperar. Ficam pendentes como antes; Desfazer volta à versão constru�
 
 ## 6. Sincronizar as notas com a gravação
 
-### Simples ou Avançado
+### A Sincronização em Simples
 
-No topo do inspetor **Sincronização** escolhes **Simples** ou **Avançado**. **Simples** (o
-habitual) mostra só o que a maioria das músicas precisa, com o guia **Como sincronizar** por
-cima: os quatro passos pela ordem em que se usam (início, andamento, corrigir onde foge,
+Em **Simples** ([secção 5](#simples-ou-avançado)) a Sincronização mostra só o que a maioria das
+músicas precisa, com o guia **Como sincronizar** por cima: os quatro passos pela ordem em que se usam (início, andamento, corrigir onde foge,
 aplicar e confirmar). Cada **Mostrar** leva-te ao cartão desse passo, e **Escolher Corrigir
-daqui** liga esse modo. No menu **Modo ▾** ficam Arrastar, Corrigir daqui e os modos da
-partitura.
+daqui** liga esse modo. No menu **Modo ▾** ficam Arrastar, Corrigir daqui e Editar
+notas.
 
 **Avançado** mostra o resto: a pista principal, o slider do início e **Detetar 1ª nota**, a
 sincronização automática, os ataques da gravação e os modos Marcar, Excerto, Mover seguintes e
-Alinhar compasso. A escolha fica guardada no browser. Mudar de um para o outro não apaga nenhuma
-correção.
+Alinhar compasso. Mudar de um para o outro não apaga nenhuma correção.
 
 ### Tutorial: sincronizar o projeto de exemplo
 
-Na página inicial, **Projeto de exemplo** cria «Exemplo de sincronização»: uma música inventada
+Na página inicial, **Mais ▾ → Projeto de exemplo** (ou **Abrir o projeto de exemplo** no cartão de boas-vindas) cria «Exemplo de sincronização»: uma música inventada
 (um riff de guitarra, 16 compassos a 100 BPM) e uma gravação feita pelo RockForge que, de
 propósito, **não** bate com a tab em três sítios. Abre-o e, com a Sincronização em **Simples**:
 
@@ -853,7 +891,7 @@ incluí-los (o ficheiro fica maior, mas quem o abre não precisa de os separar o
 ficheiro leva o projeto tal como foi construído pela última vez: se houver alterações por
 aplicar, a app pergunta antes — carrega primeiro em **Aplicar e reconstruir** para as incluir.
 
-Para abrir um, na página inicial carrega em **Importar projeto** (ou larga o `.rfproj` no cartão
+Para abrir um, na página inicial carrega em **Mais ▾ → Importar projeto** (ou larga o `.rfproj` no cartão
 "Arrasta um ficheiro Guitar Pro"). Fica um projeto novo, que é construído outra vez com tudo o
 que o ficheiro traz. O que só fazia sentido no computador de origem (a cópia instalada no jogo,
 as versões anteriores) não vem.
@@ -881,7 +919,7 @@ não apaga a outra. A separação nunca é perfeita: pode ouvir-se um resto do i
 
 ## 12. Um álbum de uma vez (Lote)
 
-**Lote (álbum)** cria vários projetos de uma vez: escolhe vários ficheiros GP e as gravações.
+**Mais ▾ → Lote (álbum)**, na página inicial, cria vários projetos de uma vez: escolhe vários ficheiros GP e as gravações.
 Cada GP fica com a gravação do mesmo nome (`faixa1.gp5` ↔ `faixa1.mp3`), ou pela ordem quando
 os nomes não batem; um GP8 com áudio dentro não precisa de gravação. Banda, álbum e ano são
 partilhados. As pistas Lead/Rhythm são escolhidas pelo nome; confere-as depois em **Editar
